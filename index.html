@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCSO Enterprise Terminal</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSK74TifsitNdVD5gI" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnyJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         /* ========================================================
            GLOBAL VARIABLES & ENTERPRISE DARK THEME (NIETYKALNE)
@@ -566,10 +566,7 @@
         import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         // =======================================================================================
-        // FIREBASE CONFIG - Aby tablica działała globalnie dla wszystkich (nie tylko u Ciebie),
-        // wklej tutaj swoje dane z darmowej bazy Firebase (Google).
-        // Jeśli tego nie uzupełnisz, system rozpozna to automatycznie i przełączy się
-        // na lokalny tryb "notatnika" w Twojej przeglądarce (fallback).
+        // FIREBASE CONFIG
         // =======================================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDmtztj6TUgkxpDvVL1-AEQhoo8GSwHIsg",
@@ -738,20 +735,29 @@
         let swatBoardInterval = null;
         let tacticalAlertActive = false;
 
-        window.onload = () => {
+        // ==========================================
+        // INIT MODULE
+        // W type="module" DOM ładuje się przed odpaleniem, dlatego funkcja poniżej zawsze chwyci listę graczy.
+        // ==========================================
+        function initApp() {
             const select = document.getElementById('login-user');
-            users.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = `[${u.id}] ${u.rank} ${u.name}`;
-                select.appendChild(opt);
-            });
+            if (select && select.options.length <= 1) {
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `[${u.id}] ${u.rank} ${u.name}`;
+                    select.appendChild(opt);
+                });
+            }
+            updateTime();
             setInterval(updateTime, 1000);
-        };
+        }
+        initApp(); // Uruchomienie natychmiastowe
 
         function updateTime() {
             const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL');
+            const timeEl = document.getElementById('current-time');
+            if(timeEl) timeEl.textContent = now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL');
         }
 
         window.attemptLogin = async function() {
@@ -780,9 +786,10 @@
             await sleep(400); log(`Dostęp przyznany. Ustanawianie bezpiecznego tunelu...`);
             
             const loginAudio = document.getElementById('audio-login');
-            loginAudio.currentTime = 0;
-            loginAudio.play().catch(e => console.warn("Przeglądarka zablokowała dźwięk logowania: ", e));
-
+            if (loginAudio) {
+                loginAudio.currentTime = 0;
+                loginAudio.play().catch(e => console.warn("Przeglądarka zablokowała dźwięk logowania: ", e));
+            }
             await sleep(200);
 
             currentUser = user;
@@ -842,7 +849,9 @@
 
         window.switchTab = function(tabId, el) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-            document.getElementById('view-' + tabId).classList.add('active');
+            const targetView = document.getElementById('view-' + tabId);
+            if(targetView) targetView.classList.add('active');
+            
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             if(el) el.classList.add('active');
         }
@@ -869,7 +878,8 @@
                         id: Date.now(),
                         author: "SYSTEM OSTRZEGANIA [AUTO]",
                         date: new Date().toLocaleString('pl-PL'),
-                        content: `>>> OGŁOSZONO ALARM TAKTYCZNY (ZAINICJOWANO PRZEZ: ${currentUser.name.toUpperCase()}) <<<\nJednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na głównym kanale. Wymagane natychmiastowe przejście na TAC-2.`,
+                        content: `>>> OGŁOSZONO ALARM TAKTYCZNY (ZAINICJOWANO PRZEZ: ${currentUser.name.toUpperCase()}) <<<
+Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na głównym kanale. Wymagane natychmiastowe przejście na TAC-2.`,
                         prio: "Wysoki",
                         timestamp: Date.now()
                     };
@@ -886,7 +896,7 @@
                     }
                 }
 
-                if (currentUser && currentUser.dept.includes('SWAT')) {
+                if (currentUser && currentUser.dept.includes('SWAT') && panicAudio) {
                     panicAudio.currentTime = 0;
                     panicAudio.play().catch(e => console.warn("Przeglądarka zablokowała autoodtwarzanie alarmu: ", e));
                 }
@@ -904,8 +914,10 @@
                         localStorage.setItem('bcso_swat_alarm_state', 'OFF_' + Date.now());
                     }
                 }
-                panicAudio.pause();
-                panicAudio.currentTime = 0;
+                if (panicAudio) {
+                    panicAudio.pause();
+                    panicAudio.currentTime = 0;
+                }
             }
         }
 
@@ -1002,7 +1014,7 @@
                             <td>DYSTRYKT/OBSZAR:<br><span id="preview-district" class="fill-space"></span></td>
                         </tr>
                         <tr><td colspan="3" style="font-weight: bold; border-bottom: none; padding-bottom: 0;">OPIS INCYDENTU:</td></tr>
-                        <tr><td colspan="3" style="border-top: none; height: 280px; white-space: pre-wrap;" id="preview-description" class="fill-space"></td></tr>
+                        <tr><td colspan="3" style="border-top: none; min-height: 280px; height: auto; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;" id="preview-description" class="fill-space"></td></tr>
                         <tr>
                             <td>ŚWIADKOWIE:<br><span id="preview-witnesses" class="fill-space"></span></td>
                             <td>RANNI:<br><span id="preview-injured" class="fill-space"></span></td>
@@ -1116,45 +1128,60 @@
             document.getElementById('preview-fields-container').innerHTML = `<p style="color: #777777; text-align: center; font-style: italic; margin-top: 50px;">Wybierz rodzaj dokumentu po lewej stronie, a następnie wprowadź dane, aby wygenerować podgląd pisma.</p>`;
         }
 
-        // NAPRAWIONE POBIERANIE HTML2CANVAS DO PNG!
-        window.downloadDocumentAsPNG = function() {
-            const originalElement = document.getElementById('document-preview');
-            if (!originalElement) return;
+        /* --------------------------------------------------------
+           NAPRAWIONA FUNKCJA GENEROWANIA DOKUMENTU (BEZ KLONOWANIA)
+           -------------------------------------------------------- */
+        window.downloadDocumentAsPNG = async function() {
+            const element = document.getElementById('document-preview');
+            const previewPanel = document.querySelector('.preview-panel');
+            if (!element) return;
 
-            // Klonujemy element, aby ominąć problemy ze skrollem / Vercel renderowaniem
-            const clone = originalElement.cloneNode(true);
-            document.body.appendChild(clone);
+            const btn = document.querySelector('.btn-primary');
+            const originalBtnText = btn.innerText;
+            btn.innerText = "GENEROWANIE DOKUMENTU...";
+            btn.disabled = true;
+
+            // Zabezpieczenie wizualne - usuwamy na chwilę cień, by obraz wyglądał jak czysta kartka
+            const originalBoxShadow = element.style.boxShadow;
+            const originalOverflow = previewPanel.style.overflow;
             
-            // Wymuszamy fizyczne wymiary poza ekranem, aby canvas uchwycił całość
-            Object.assign(clone.style, {
-                position: 'absolute',
-                top: '-9999px',
-                left: '-9999px',
-                width: '210mm',
-                height: 'max-content',
-                minHeight: '297mm',
-                transform: 'none',
-                overflow: 'visible'
-            });
+            element.style.boxShadow = 'none';
+            previewPanel.style.overflow = 'visible'; // Zabezpiecza przed ucięciem dolnej części dokumentu
 
-            html2canvas(clone, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: false,
-                backgroundColor: "#ffffff",
-                logging: false
-            }).then(canvas => {
-                document.body.removeChild(clone); // Sprzątamy
-                const image = canvas.toDataURL("image/png");
+            try {
+                // Generowanie ze zwiększoną jakością (skala 3 daje bardzo ostre teksty)
+                const canvas = await html2canvas(element, {
+                    scale: 3, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff",
+                    logging: false,
+                    windowWidth: element.scrollWidth,
+                    windowHeight: element.scrollHeight
+                });
+                
+                const image = canvas.toDataURL("image/png", 1.0);
                 const link = document.createElement('a');
+                
+                // Formatowanie nazwy pliku
                 const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
                 link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
+                
+                link.href = image; 
+                document.body.appendChild(link);
                 link.click();
-            }).catch(error => {
-                document.body.removeChild(clone);
-                console.error("Błąd podczas generowania pliku PNG:", error);
-                alert("Wystąpił błąd podczas eksportu.");
-            });
+                document.body.removeChild(link);
+                
+            } catch (error) {
+                console.error("Błąd generowania PNG:", error);
+                alert("Wystąpił błąd podczas zapisywania pliku. Sprawdź konsolę (F12).");
+            } finally {
+                // Przywracamy dawny wygląd interfejsu
+                element.style.boxShadow = originalBoxShadow;
+                previewPanel.style.overflow = originalOverflow;
+                
+                btn.innerText = originalBtnText;
+                btn.disabled = false;
+            }
         }
 
         function escapeHTML(str) {
