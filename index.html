@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCSO Enterprise Terminal</title>
+    <!-- html2canvas CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSK74TifsitNdVD5gI" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        /* ========================================================
+           GLOBAL VARIABLES & ENTERPRISE DARK THEME (NIETYKALNE)
+           ======================================================== */
+        :root {
+            --bg-deep: #0a0a0a;
+            --bg-panel: #141414;
+            --bg-input: #1e1e1e;
+            
+            --desert-tan: #D2B48C;
+            --copper: #B87333;
+            --muted-orange: #C76B20;
+            --faded-gold: #C5B358;
+            
+            --text-main: #E0E0E0;
+            --text-dim: #9E9E9E;
+            --text-bright: #ffffff;
+            --border-color: #333333;
+            
+            --prio-low: #4A7C59;
+            --prio-med: #C76B20;
+            --prio-high: #A83232;
+
+            /* SWAT Specific Variables */
+            --swat-green: #3a5a40;
+            --swat-neon-green: #52b788;
+            --swat-red: #d90429;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--copper); }
+
+        /* ========================================================
+           LOGIN SCREEN
+           ======================================================== */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-deep);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background-color: var(--bg-panel);
+            padding: 40px; border: 1px solid var(--border-color);
+            border-top: 4px solid var(--faded-gold);
+            width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        .login-header {
+            text-align: center; margin-bottom: 30px;
+        }
+        .login-header svg { width: 60px; fill: var(--faded-gold); margin-bottom: 10px; }
+        .login-header h2 { color: var(--faded-gold); letter-spacing: 2px; font-size: 22px; }
+        .login-header p { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 12px; color: var(--desert-tan); letter-spacing: 1px; }
+        .form-control {
+            width: 100%; padding: 12px;
+            background-color: var(--bg-input); color: var(--text-main);
+            border: 1px solid var(--border-color);
+            outline: none; transition: 0.3s;
+        }
+        .form-control:focus { border-color: var(--copper); box-shadow: 0 0 5px rgba(184, 115, 51, 0.3); }
+
+        .btn {
+            width: 100%; padding: 12px; background-color: transparent;
+            color: var(--faded-gold); border: 1px solid var(--faded-gold);
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn:hover { background-color: var(--faded-gold); color: var(--bg-deep); }
+
+        #login-console {
+            position: absolute; bottom: -100px; left: 0; width: 100%;
+            height: 80px; overflow: hidden; font-family: 'Courier New', Courier, monospace;
+            font-size: 11px; color: var(--prio-low);
+        }
+
+        /* ========================================================
+           MAIN APPLICATION
+           ======================================================== */
+        #app-screen {
+            display: none; width: 100vw; height: 100vh;
+        }
+
+        #sidebar {
+            width: 280px; background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-brand {
+            padding: 30px 20px; text-align: center; border-bottom: 1px solid var(--border-color);
+        }
+        .sidebar-brand svg { width: 50px; fill: var(--faded-gold); margin-bottom: 10px; }
+        .sidebar-brand h1 { font-size: 16px; color: var(--faded-gold); letter-spacing: 2px; }
+
+        .nav-menu { flex-grow: 1; padding: 20px 0; }
+        .nav-item {
+            padding: 15px 25px; cursor: pointer; display: flex; align-items: center;
+            color: var(--text-dim); transition: 0.2s; border-left: 3px solid transparent;
+            font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .nav-item:hover, .nav-item.active {
+            background-color: var(--bg-input); color: var(--desert-tan);
+            border-left-color: var(--copper);
+        }
+
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; background-color: var(--bg-deep); position: relative;}
+        
+        #topbar {
+            height: 60px; background-color: var(--bg-panel); border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 30px;
+            z-index: 10;
+        }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-info .badge { color: var(--faded-gold); font-weight: bold; }
+        .user-info .details { font-size: 14px; }
+        .logout-btn { background: none; border: 1px solid var(--border-color); color: var(--muted-orange); padding: 5px 15px; cursor: pointer; }
+        .logout-btn:hover { background: var(--muted-orange); color: white; }
+
+        .view-section { display: none; padding: 30px; height: calc(100vh - 60px); overflow-y: auto; }
+        .view-section.active { display: block; }
+        
+        .section-title { font-size: 24px; color: var(--desert-tan); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+
+        /* ========================================================
+           FORMS & DOCUMENT GENERATION
+           ======================================================== */
+        .workspace { display: flex; flex: 1; overflow: hidden; width: 100%; height: 100%; }
+
+        .creator-panel {
+            width: 450px; background-color: var(--bg-panel); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; overflow-y: auto; padding: 20px; gap: 20px;
+        }
+
+        .section-title-doc {
+            color: var(--faded-gold); font-size: 14px; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;
+        }
+
+        .doc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .doc-item {
+            background-color: var(--bg-input); border: 1px solid var(--border-color); padding: 12px;
+            border-radius: 6px; cursor: pointer; color: var(--text-bright); transition: all 0.2s; font-size: 14px;
+        }
+        .doc-item:hover { border-color: var(--faded-gold); background-color: rgba(255,255,255,0.02); }
+        .doc-item .category-tag { font-size: 11px; color: var(--faded-gold); display: block; margin-top: 4px; opacity: 0.8; }
+
+        .dynamic-form { display: flex; flex-direction: column; gap: 12px; }
+        .form-group-doc { display: flex; flex-direction: column; gap: 6px; }
+        .form-group-doc label { font-size: 13px; color: var(--text-bright); }
+        .form-group-doc input, .form-group-doc textarea {
+            background-color: var(--bg-input); border: 1px solid var(--border-color);
+            color: var(--text-bright); padding: 10px; border-radius: 4px; font-size: 14px; outline: none;
+        }
+        .form-group-doc input:focus, .form-group-doc textarea:focus { border-color: var(--faded-gold); }
+        .form-group-doc textarea { resize: vertical; min-height: 80px; }
+        
+        .actions-area { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-doc { flex: 1; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .btn-primary { background-color: var(--faded-gold); color: #121417; }
+        .btn-primary:hover { background-color: var(--copper); }
+        .btn-secondary { background-color: var(--bg-input); color: var(--text-bright); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background-color: var(--border-color); }
+
+        .preview-panel { flex: 1; background-color: var(--bg-deep); padding: 40px; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; }
+
+        .paper-document, .paper-document * {
+            font-family: "Georgia", "Times New Roman", serif !important;
+            box-sizing: border-box !important;
+            word-wrap: break-word !important;
+            word-break: break-word !important;
+            white-space: normal;
+        }
+
+        .paper-document {
+            width: 210mm; min-height: 297mm; background-color: #ffffff !important; color: #111111 !important;
+            padding: 20mm 15mm; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; position: relative;
+        }
+
+        .doc-header { text-align: center; border-bottom: 3px double #111111; padding-bottom: 15px; margin-bottom: 30px; }
+        .doc-header h1 { font-size: 22px !important; font-weight: bold !important; letter-spacing: 1px; margin-bottom: 5px; color: black !important; }
+        .doc-header h2 { font-size: 14px !important; text-transform: uppercase; letter-spacing: 2px; color: #444444 !important; font-weight: normal !important; }
+        
+        .doc-meta-top { display: flex; justify-content: space-between; font-size: 13px !important; margin-bottom: 30px; border-bottom: 1px solid #cccccc; padding-bottom: 8px; color: black !important;}
+        .doc-title-main { text-align: center; font-size: 20px !important; font-weight: bold !important; text-transform: uppercase; margin-bottom: 35px; text-decoration: underline; color: black !important;}
+        
+        .doc-content { flex: 1; font-size: 15px !important; line-height: 1.6; color: black !important;}
+        .content-field { margin-bottom: 20px; }
+        .field-label { font-weight: bold !important; text-transform: uppercase; font-size: 12px !important; color: #333333 !important; margin-bottom: 4px; }
+        .field-value { min-height: 24px; border-bottom: 1px dotted #999999; padding-bottom: 4px; color: black !important; }
+        
+        .doc-footer { margin-top: auto; padding-top: 30px; color: black !important;}
+        .legal-clause { font-size: 11px !important; font-style: italic !important; text-align: justify; color: #555555 !important; border-top: 1px solid #dddddd; padding-top: 15px; margin-bottom: 40px; line-height: 1.4; }
+        .signature-area { display: flex; justify-content: flex-end; }
+        .signature-block { text-align: center; width: 250px; }
+        .signature-line { border-bottom: 1px dashed #111111; height: 40px; margin-bottom: 5px; }
+        .signature-title { font-size: 11px !important; font-weight: bold !important; color: #222222 !important; }
+
+        .incident-grid-table { width: 100%; border: 2px solid #111111; border-collapse: collapse; margin-top: 10px; color: #000000 !important; }
+        .incident-grid-table td { border: 1px solid #111111; padding: 6px; font-size: 11px !important; vertical-align: top; color: #000000 !important; }
+        .grey-zone { background-color: #dcdcdc !important; }
+        .section-divider { text-align: center; font-weight: bold !important; font-size: 13px !important; background-color: #f2f2f2; text-transform: uppercase; letter-spacing: 1px; }
+        .fill-space { font-family: 'Courier New', Courier, monospace !important; font-weight: bold !important; font-size: 13px !important; color: #000000 !important; }
+
+        /* ========================================================
+           BOARDS (DB)
+           ======================================================== */
+        .board-controls { background: var(--bg-panel); padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px; }
+        .board-list { display: flex; flex-direction: column; gap: 15px; }
+        .board-item { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 20px; border-left-width: 5px; }
+        .board-item.prio-Niski { border-left-color: var(--prio-low); }
+        .board-item.prio-Średni { border-left-color: var(--prio-med); }
+        .board-item.prio-Wysoki { border-left-color: var(--prio-high); }
+        .board-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .board-author { color: var(--desert-tan); font-weight: bold; }
+        .board-content { font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
+
+        /* ========================================================
+           NEW SWAT TACTICAL MODULE
+           ======================================================== */
+        #view-swat-board {
+            padding: 30px;
+        }
+
+        .swat-header-flex {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px;
+        }
+
+        .swat-header-flex h2 { border: none; margin: 0; padding: 0; }
+
+        .btn-tactical {
+            background-color: transparent; color: var(--swat-red);
+            border: 1px solid var(--swat-red); padding: 10px 20px; font-weight: bold;
+            letter-spacing: 1px; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 0 10px rgba(217, 4, 41, 0.2); text-transform: uppercase; font-size: 12px;
+        }
+        .btn-tactical:hover { background-color: var(--swat-red); color: white; box-shadow: 0 0 20px rgba(217, 4, 41, 0.6); }
+
+        .swat-grid {
+            display: grid; grid-template-columns: 350px 1fr; gap: 25px; height: calc(100% - 60px);
+        }
+
+        .swat-sidebar {
+            display: flex; flex-direction: column; gap: 20px; overflow-y: auto; padding-right: 10px;
+        }
+
+        /* Module: Tactical Status */
+        .tactical-module {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            padding: 20px; position: relative;
+        }
+        .tactical-module h3 {
+            color: var(--text-dim); font-size: 12px; text-transform: uppercase;
+            letter-spacing: 2px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;
+        }
+
+        .status-box {
+            background-color: rgba(82, 183, 136, 0.1); border: 1px solid var(--swat-green);
+            color: var(--swat-neon-green); text-align: center; padding: 10px; font-weight: bold;
+            letter-spacing: 1px; font-size: 14px; margin-bottom: 15px; font-family: 'Courier New', Courier, monospace;
+            transition: 0.5s;
+        }
+        .status-stats p { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 4px; }
+        .status-stats p strong { color: var(--text-bright); font-family: 'Courier New', Courier, monospace; }
+
+        /* Module: Roster */
+        .roster-group { margin-bottom: 15px; }
+        .roster-title { font-size: 11px; color: var(--faded-gold); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .roster-item {
+            background: var(--bg-input); border-left: 2px solid var(--border-color);
+            padding: 8px 12px; font-size: 13px; color: var(--text-main); margin-bottom: 4px;
+            display: flex; align-items: center;
+        }
+        .roster-item::before {
+            content: ''; display: inline-block; width: 6px; height: 6px; background-color: var(--border-color); border-radius: 50%; margin-right: 10px;
+        }
+
+        /* MAIN BOARD AREA FOR SWAT */
+        .swat-main-area { display: flex; flex-direction: column; gap: 20px; overflow-y: auto;}
+
+        /* RED ALERT ANIMATIONS */
+        body.tactical-alert-active { animation: emergency-pulse 3s infinite; }
+        @keyframes emergency-pulse {
+            0% { box-shadow: inset 0 0 0px rgba(217,4,41,0); }
+            50% { box-shadow: inset 0 0 100px rgba(217,4,41,0.15); }
+            100% { box-shadow: inset 0 0 0px rgba(217,4,41,0); }
+        }
+
+        .tactical-alert-active .status-box {
+            background-color: rgba(217, 4, 41, 0.1); border-color: var(--swat-red); color: var(--swat-red);
+            animation: text-pulse 1s infinite;
+        }
+        @keyframes text-pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .tactical-alert-active .roster-item { border-left-color: var(--swat-red); }
+        .tactical-alert-active .roster-item::before { background-color: var(--swat-red); box-shadow: 0 0 5px var(--swat-red); }
+
+        /* ========================================================
+           LINKS SECTION
+           ======================================================== */
+        .links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .link-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; text-decoration: none; color: var(--text-main);
+            transition: 0.3s; display: block; position: relative; overflow: hidden;
+        }
+        .link-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--copper); transition: 0.3s; }
+        .link-card:hover { border-color: var(--copper); transform: translateY(-3px); }
+        .link-card:hover::before { width: 10px; background: var(--faded-gold); }
+        .link-card h3 { color: var(--faded-gold); margin-bottom: 10px; }
+        .link-card p { font-size: 13px; color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+    <!-- ================== AUDIO ELEMENTS ================== -->
+    <audio id="audio-login" src="sounds/login.mp3" preload="auto"></audio>
+    <audio id="audio-panic" src="sounds/panic.mp3" preload="auto"></audio>
+
+    <!-- ================== LOGIN SCREEN ================== -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="login-header">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                <h2>BCSO TERMINAL</h2>
+                <p>Oprogramowanie Autoryzowane</p>
+            </div>
+            <div class="form-group">
+                <label>Profil Użytkownika</label>
+                <select id="login-user" class="form-control"><option value="">Wybierz tożsamość...</option></select>
+            </div>
+            <div class="form-group">
+                <label>Hasło Autoryzacyjne</label>
+                <input type="password" id="login-pass" class="form-control" placeholder="Wprowadź hasło...">
+            </div>
+            <button class="btn" onclick="attemptLogin()">Zaloguj</button>
+            <div id="login-error" style="color: var(--prio-high); font-size: 12px; margin-top: 10px; text-align: center; display: none;">Odmowa dostępu. Nieprawidłowe dane.</div>
+            <div id="login-console"></div>
+        </div>
+    </div>
+
+    <!-- ================== APP SCREEN ================== -->
+    <div id="app-screen">
+        <div id="sidebar">
+            <div class="sidebar-brand">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                <h1>BCSO TERMINAL</h1>
+            </div>
+            <div class="nav-menu">
+                <div class="nav-item active" onclick="switchTab('dashboard', this)">Karta Główna</div>
+                <div class="nav-item" onclick="switchTab('forms', this)">Baza Dokumentów</div>
+                <div class="nav-item" id="nav-db-board" onclick="switchTab('db-board', this)" style="display: none;">Sprawy wewnętrzne (DB)</div>
+                <div class="nav-item" id="nav-swat-board" onclick="switchTab('swat-board', this)" style="display: none;">Centrum Dowodzenia SWAT</div>
+                <div class="nav-item" onclick="switchTab('links', this)">Przydatne Linki</div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="topbar">
+                <div style="color: var(--text-dim); font-size: 12px;" id="current-time">00:00:00</div>
+                <div class="user-info">
+                    <div class="badge" id="topbar-badge">[000]</div>
+                    <div class="details" id="topbar-name">Rank Name</div>
+                    <button class="logout-btn" onclick="logout()">Wyloguj</button>
+                </div>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div id="view-dashboard" class="view-section active">
+                <h2 class="section-title">Terminal Mobilny BCSO</h2>
+                <p style="color: var(--text-dim); line-height: 1.6;">
+                    Witaj w autoryzowanym systemie zarządzania Blaine County Sheriff's Office.<br>
+                    Wszystkie akcje w systemie są rejestrowane. Zalogowano na poświadczeniach: <strong id="dash-user-info" style="color: var(--desert-tan)"></strong>.
+                </p>
+            </div>
+
+            <!-- FORMS -->
+            <div id="view-forms" class="view-section" style="padding: 0; overflow: hidden;">
+                <div class="workspace">
+                    <div class="creator-panel">
+                        <div>
+                            <div class="section-title-doc">Dostępne Formularze</div>
+                            <div class="doc-list" id="form-list-container"></div>
+                        </div>
+                        <div id="form-inputs-section" style="display: none;">
+                            <div class="section-title-doc" id="active-form-title">Wypełnij dokument</div>
+                            <div class="dynamic-form" id="dynamic-inputs-container"></div>
+                            <div class="actions-area">
+                                <button class="btn-doc btn-secondary" onclick="clearForm()">Wyczyść</button>
+                                <button class="btn-doc btn-primary" onclick="downloadDocumentAsPNG()">Pobierz PNG</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-panel">
+                        <div class="paper-document" id="document-preview">
+                            <div class="doc-header">
+                                <h1>B.C.S.O.</h1>
+                                <h2>BLAINE COUNTY SHERIFF'S OFFICE</h2>
+                            </div>
+                            <div class="doc-meta-top">
+                                <div>STATUS: OFICJALNY DOKUMENT URZĘDOWY</div>
+                                <div id="live-date">DATA: --/--/----</div>
+                            </div>
+                            <div class="doc-title-main" id="preview-doc-title">PROSZĘ WYBRAĆ FORMULARZ</div>
+                            <div class="doc-content" id="preview-fields-container"></div>
+                            <div class="doc-footer">
+                                <div class="legal-clause">
+                                    Oświadczam pod groźbą kary za krzywoprzysięstwo zgodnie z prawem Stanu San Andreas, że powyższe informacje są prawdziwe i poprawne.
+                                </div>
+                                <div class="signature-area">
+                                    <div class="signature-block">
+                                        <div class="signature-line"></div>
+                                        <div class="signature-title" id="doc-signature">PODPIS ELEKTRONICZNY SPORZĄDZAJĄCYM</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DB BOARD -->
+            <div id="view-db-board" class="view-section">
+                <h2 class="section-title">Wewnętrzna Tablica DB</h2>
+                <div class="board-controls">
+                    <div class="form-group">
+                        <label>Treść ogłoszenia / wpisu</label>
+                        <textarea id="db-post-content" class="form-control" placeholder="Wprowadź treść operacyjną..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Priorytet</label>
+                        <select id="db-post-prio" class="form-control" style="width: 200px;">
+                            <option value="Niski">Niski (Informacja)</option>
+                            <option value="Średni">Średni (Ważne)</option>
+                            <option value="Wysoki">Wysoki (Krytyczne)</option>
+                        </select>
+                    </div>
+                    <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addDBPost()">Dodaj Wpis</button>
+                </div>
+                <div class="board-list" id="db-posts-container"></div>
+            </div>
+
+            <!-- SWAT BOARD (NEW GRID & ROSTER) -->
+            <div id="view-swat-board" class="view-section" style="padding: 30px;">
+                <div class="swat-header-flex">
+                    <h2 class="section-title">Centrum Dowodzenia taktycznego S.W.A.T.</h2>
+                    <button class="btn-tactical" id="tactical-btn" onclick="toggleTacticalAlert()">[ ZAINICJUJ ALARM TAKTYCZNY ]</button>
+                </div>
+
+                <div class="swat-grid">
+                    <!-- LEWA KOLUMNA: ROSTER & STATUS -->
+                    <div class="swat-sidebar">
+                        
+                        <!-- Tactical Status Module -->
+                        <div class="tactical-module">
+                            <h3>Status Jednostki Taktycznej</h3>
+                            <div class="status-box" id="swat-status-indicator">STANDBY - KOD 4 (GOTOWOŚĆ)</div>
+                            <div class="status-stats">
+                                <p>Efektywność bojowa: <strong id="swat-stat-eff">100%</strong></p>
+                                <p>Autoryzacja pancerza: <strong>POZIOM IV</strong></p>
+                                <p>Wsparcie lotnicze: <strong>DOSTĘPNE (Air-1)</strong></p>
+                                <p>Sprzęt ciężki: <strong>BEARCAT (Vespucci HQ)</strong></p>
+                                <p>Dedykowany kanał TAC: <strong>SZYFROWANY (TAC-2)</strong></p>
+                            </div>
+                        </div>
+
+                        <!-- SWAT Roster Module -->
+                        <div class="tactical-module">
+                            <h3>Struktura Operacyjna S.W.A.T.</h3>
+                            
+                            <div class="roster-group">
+                                <div class="roster-title">Commander</div>
+                                <div class="roster-item">[202] Denis Rush</div>
+                            </div>
+
+                            <div class="roster-group">
+                                <div class="roster-title">Team Leader</div>
+                                <div class="roster-item">[204] Colby Hoffa</div>
+                            </div>
+
+                            <div class="roster-group">
+                                <div class="roster-title">Operators</div>
+                                <div class="roster-item">[203] Caitlyn Payne</div>
+                                <div class="roster-item">[211] Michael Winter</div>
+                                <div class="roster-item">[207] Christopher Bathyscaphe</div>
+                            </div>
+
+                            <div class="roster-group">
+                                <div class="roster-title">Tactical Medic</div>
+                                <div class="roster-item">[209] Zack Russo</div>
+                                <div class="roster-item">[256] Yakiv Mondragon</div>
+                            </div>
+
+                            <div class="roster-group">
+                                <div class="roster-title">Reserve Operators</div>
+                                <div class="roster-item">[220] Jeffrey Fox</div>
+                                <div class="roster-item">[250] Patrick De Luca</div>
+                                <div class="roster-item">[255] David Woodbuurn</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- PRAWA KOLUMNA: TABLICA LOGÓW -->
+                    <div class="swat-main-area">
+                        <div class="board-controls" style="margin-bottom: 0;">
+                            <div class="form-group">
+                                <label>Dziennik operacyjny / Komunikat taktyczny</label>
+                                <textarea id="swat-post-content" class="form-control" placeholder="Wprowadź treść operacyjną (np. Plan wejścia, dyslokacja jednostek)..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Kategoria wpisu</label>
+                                <select id="swat-post-prio" class="form-control" style="width: 250px;">
+                                    <option value="Niski">Raport rutynowy (Standby)</option>
+                                    <option value="Średni">Rozkaz taktyczny (Deploy)</option>
+                                    <option value="Wysoki">KRYTYCZNE (Shots Fired/Officer Down)</option>
+                                </select>
+                            </div>
+                            <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addSWATPost()">Nadaj Komunikat</button>
+                        </div>
+                        <div class="board-list" id="swat-posts-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LINKS -->
+            <div id="view-links" class="view-section">
+                <h2 class="section-title">Zasoby i Procedury</h2>
+                <div class="links-grid">
+                    <a href="https://bcso.neocities.org/" target="_blank" class="link-card">
+                        <h3>Strona Główna BCSO</h3>
+                        <p>Oficjalna wizytówka departamentu szeryfa.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1ZTGKDghdKP_eWlSlQpE_I2iRf_wxDkIcFp93tNqblU8/edit?tab=t.0" target="_blank" class="link-card">
+                        <h3>Manual of Police</h3>
+                        <p>Kompendium wiedzy prawnej, procedury działania i regulaminy wewnętrzne.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1E5dZNdyNtBMHU0i0l_T_ThVKIB4f_xW83FBvfbdYd1s/edit?tab=t.0" target="_blank" class="link-card">
+                        <h3>Materiały BLS</h3>
+                        <p>Basic Life Support - procedury ratownictwa medycznego w terenie.</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================== SCRIPT LOGIC ================== -->
+    <script>
+        // Zaktualizowana baza z wszystkimi członkami S.W.A.T.
+        const users = [
+            { id: 210, name: "Alex Lopez", rank: "Sergeant", dept: ["DB"], isHC: true, pass: "1" },
+            { id: 256, name: "Yakiv Mondragon", rank: "Detective", dept: ["DB", "SWAT"], isHC: false, pass: "1" },
+            { id: 257, name: "Liam Miller", rank: "Detective", dept: ["Patrol", "SWAT", "DB"], isHC: false, pass: "1" },
+            
+            { id: 201, name: "Jack Wheelie", rank: "Undersheriff", dept: ["Patrol"], isHC: true, pass: "2" },
+            { id: 202, name: "Denis Rush", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
+            { id: 203, name: "Caitlyn Payne", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
+            { id: 204, name: "Colby Hoffa", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
+            
+            { id: 207, name: "Christopher Bathyscaphe", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
+            { id: 211, name: "Michael Winter", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
+            { id: 216, name: "Aiden Norris", rank: "Deputy", dept: ["Patrol"], isHC: false, pass: "3" },
+            
+            // Nowi pracownicy do struktury SWAT
+            { id: 209, name: "Zack Russo", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
+            { id: 220, name: "Jeffrey Fox", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
+            { id: 250, name: "Patrick De Luca", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
+            { id: 255, name: "David Woodbuurn", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" }
+        ];
+
+        /* BAZA SZABLONÓW - ZMODYFIKOWANA WEDŁUG ZALECEŃ */
+        const formTemplates = [
+            // ================= PATROL =================
+            {
+                id: "universal_incident", title: "Uniwersalny incydent", category: "Wydział Patrolowy",
+                isCustomMatrix: true,
+                fields: [
+                    { id: "dept", label: "Departament (Szara strefa)", type: "text", default: "BCSO" },
+                    { id: "rep_no", label: "Rep No. (Szara strefa)", type: "text", placeholder: "np. SK-921" },
+                    { id: "case_no", label: "Incident/Case No. (Szara strefa)", type: "text", placeholder: "np. #8412" },
+                    { id: "first_name", label: "Imię zastępcy", type: "text" },
+                    { id: "last_name", label: "Nazwisko zastępcy", type: "text" },
+                    { id: "rank", label: "Stopień służbowy", type: "text" },
+                    { id: "role", label: "Funkcja", type: "text", placeholder: "np. Patrol Unit / K9" },
+                    { id: "agency", label: "Agencja", type: "text", default: "BCSO" },
+                    { id: "division", label: "Dywizja", type: "text", placeholder: "np. Traffic / Air Support" },
+                    { id: "age", label: "Wiek", type: "text", placeholder: "Wiek funkcjonariusza" },
+                    { id: "badge", label: "Numer odznaki", type: "text" },
+                    { id: "race", label: "Rasa", type: "text", placeholder: "Kaukaska / Afroamerykańska itp." },
+                    { id: "nature", label: "Natura incydentu", type: "text", placeholder: "np. 911 call / Kontrola drogowa" },
+                    { id: "location", label: "Miejsce incydentu", type: "text" },
+                    { id: "date", label: "Data incydentu", type: "text" },
+                    { id: "time", label: "Czas zdarzenia", type: "text", placeholder: "np. 14:35" },
+                    { id: "sv_called", label: "Wezwano SV (Tak/Nie)", type: "text", default: "NIE" },
+                    { id: "area", label: "Obszar incydentu", type: "text", placeholder: "np. Paleto Bay" },
+                    { id: "district", label: "Dystrykt/Obszar", type: "text", placeholder: "Blaine County" },
+                    { id: "description", label: "Opis incydentu", type: "textarea" },
+                    { id: "witnesses", label: "Świadkowie (Tak/Nie)", type: "text", default: "NIE" },
+                    { id: "injured", label: "Ranni (Tak/Nie)", type: "text", default: "NIE" },
+                    { id: "ems_called", label: "Wezwano EMS (Tak/Nie)", type: "text", default: "NIE" },
+                    { id: "fatalities", label: "Ofiary śmiertelne (Tak/Nie)", type: "text", default: "NIE" },
+                    { id: "remarks", label: "Uwagi", type: "textarea", default: "Brak" },
+                    { id: "sig_badge", label: "Nr odznaki (Dół)", type: "text" },
+                    { id: "sig_date", label: "Data podpisu", type: "text" }
+                ]
+            },
+            {
+                id: "leave_request", title: "Wniosek o urlop", category: "Wydział Patrolowy",
+                fields: [
+                    { id: "leave_name", label: "Funkcjonariusz wnioskujący", type: "text" },
+                    { id: "leave_start", label: "Data rozpoczęcia urlopu", type: "text", placeholder: "DD/MM/YYYY" },
+                    { id: "leave_end", label: "Data zakończenia urlopu", type: "text", placeholder: "DD/MM/YYYY" },
+                    { id: "leave_reason", label: "Uzasadnienie wniosku urlopowego", type: "textarea" }
+                ]
+            },
+            {
+                id: "resignation", title: "Wypowiedzenie", category: "Wydział Patrolowy",
+                fields: [
+                    { id: "officer_name", label: "Imię i nazwisko", type: "text" },
+                    { id: "last_day", label: "Ostatni dzień służby", type: "text", placeholder: "DD/MM/YYYY" },
+                    { id: "reason", label: "Powód rezygnacji", type: "textarea" },
+                    { id: "feedback", label: "Uwagi dla dowództwa (opcjonalnie)", type: "textarea" }
+                ]
+            },
+
+            // ================= DETEKTYWI =================
+            {
+                id: "duty_report_db", title: "Raport służbowy", category: "Biuro Detektywistyczne (DB)",
+                fields: [
+                    { id: "detective", label: "Detektyw sporządzający", type: "text" },
+                    { id: "case_id", label: "Sygnatura sprawy (Case File)", type: "text" },
+                    { id: "actions", label: "Opis przeprowadzonych czynności operacyjnych", type: "textarea" },
+                    { id: "evidence", label: "Zabezpieczone dowody", type: "textarea" },
+                    { id: "next_steps", label: "Planowane kolejne kroki", type: "textarea" }
+                ]
+            },
+
+            // ================= SWAT =================
+            {
+                id: "swat_action_report", title: "Raport z akcji", category: "SWAT",
+                fields: [
+                    { id: "swat_commander", label: "Dowódca operacji", type: "text" },
+                    { id: "swat_location", label: "Lokalizacja uderzenia", type: "text" },
+                    { id: "suspects", label: "Cele (Zatrzymani / Zneutralizowani)", type: "text" },
+                    { id: "equipment", label: "Wykorzystany sprzęt specjalistyczny (np. Bearcat, Flashbang)", type: "text" },
+                    { id: "summary", label: "Przebieg działań (Breach & Clear)", type: "textarea" },
+                    { id: "injuries", label: "Ranni operatorzy (Tak/Nie - wymień)", type: "text", default: "Nie" }
+                ]
+            },
+
+            // ================= HIGH COMMAND =================
+            {
+                id: "personal_order", title: "Rozkaz personalny", category: "Dowództwo (High Command)",
+                fields: [
+                    { id: "issuer", label: "Wydający rozkaz", type: "text" },
+                    { id: "target", label: "Dotyczy (Imię, nazwisko, stopień)", type: "text" },
+                    { id: "content", label: "Treść rozkazu", type: "textarea" },
+                    { id: "reason", label: "Uzasadnienie", type: "textarea" },
+                    { id: "effective_date", label: "Data wejścia w życie", type: "text" }
+                ]
+            },
+            {
+                id: "promotion", title: "Awans", category: "Dowództwo (High Command)",
+                fields: [
+                    { id: "issuer", label: "Wydający decyzję", type: "text" },
+                    { id: "target", label: "Awansowany funkcjonariusz", type: "text" },
+                    { id: "old_rank", label: "Dotychczasowy stopień", type: "text" },
+                    { id: "new_rank", label: "Nowy stopień", type: "text" },
+                    { id: "reason", label: "Uzasadnienie awansu", type: "textarea" }
+                ]
+            },
+            {
+                id: "commendation", title: "Pochwała", category: "Dowództwo (High Command)",
+                fields: [
+                    { id: "issuer", label: "Wydający pochwałę", type: "text" },
+                    { id: "target", label: "Wyróżniony funkcjonariusz", type: "text" },
+                    { id: "reason", label: "Opis czynu / Powód pochwały", type: "textarea" },
+                    { id: "reward", label: "Przyznana nagroda (np. premia, urlop)", type: "text", default: "Zgodnie z uznaniem dowództwa" }
+                ]
+            },
+            {
+                id: "demotion", title: "Degradacja", category: "Dowództwo (High Command)",
+                fields: [
+                    { id: "issuer", label: "Wydający decyzję", type: "text" },
+                    { id: "target", label: "Zdegradowany funkcjonariusz", type: "text" },
+                    { id: "old_rank", label: "Dotychczasowy stopień", type: "text" },
+                    { id: "new_rank", label: "Nowy stopień", type: "text" },
+                    { id: "reason", label: "Powód degradacji", type: "textarea" }
+                ]
+            },
+            {
+                id: "dismissal", title: "Zwolnienie", category: "Dowództwo (High Command)",
+                fields: [
+                    { id: "issuer", label: "Wydający decyzję", type: "text" },
+                    { id: "target", label: "Zwalniany funkcjonariusz", type: "text" },
+                    { id: "reason", label: "Powód zwolnienia", type: "textarea" },
+                    { id: "disciplinary", label: "Zwolnienie dyscyplinarne (Tak/Nie)", type: "text", default: "Nie" },
+                    { id: "equipment", label: "Status zwrotu mienia służbowego", type: "text", default: "Oczekujące na zdanie" }
+                ]
+            }
+        ];
+
+        let currentUser = null;
+        let selectedTemplate = null;
+        let dbBoardInterval = null;
+        let swatBoardInterval = null;
+        let tacticalAlertActive = false;
+
+        window.onload = () => {
+            const select = document.getElementById('login-user');
+            users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = `[${u.id}] ${u.rank} ${u.name}`;
+                select.appendChild(opt);
+            });
+            setInterval(updateTime, 1000);
+        };
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL');
+        }
+
+        async function attemptLogin() {
+            const id = parseInt(document.getElementById('login-user').value);
+            const pass = document.getElementById('login-pass').value;
+            const err = document.getElementById('login-error');
+            const cons = document.getElementById('login-console');
+            
+            err.style.display = 'none';
+            cons.innerHTML = '';
+
+            const user = users.find(u => u.id === id);
+            if (!user || user.pass !== pass) {
+                err.style.display = 'block';
+                return;
+            }
+
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const log = (msg, color='var(--prio-low)') => {
+                cons.innerHTML += `<div style="color: ${color}">> ${msg}</div>`;
+                cons.scrollTop = cons.scrollHeight;
+            };
+
+            await sleep(150); log(`Inicjalizacja połączenia dla ID [${user.id}]...`);
+            await sleep(300); log(`Weryfikacja kluczy w bazie danych...`, `var(--muted-orange)`);
+            await sleep(400); log(`Dostęp przyznany. Ustanawianie bezpiecznego tunelu...`);
+            
+            // Odtworzenie dźwięku logowania
+            const loginAudio = document.getElementById('audio-login');
+            loginAudio.currentTime = 0;
+            loginAudio.play().catch(e => console.warn("Przeglądarka zablokowała dźwięk logowania: ", e));
+
+            await sleep(200);
+
+            currentUser = user;
+            setupUI();
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+        }
+
+        function logout() {
+            currentUser = null;
+            clearInterval(dbBoardInterval);
+            clearInterval(swatBoardInterval);
+            document.getElementById('login-pass').value = '';
+            document.getElementById('app-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('login-console').innerHTML = '';
+            
+            if(tacticalAlertActive) toggleTacticalAlert(false); // Wylącz alarm przy wylogowaniu
+
+            switchTab('dashboard', document.querySelector('.nav-item'));
+            resetCreator();
+        }
+
+        function setupUI() {
+            document.getElementById('topbar-badge').textContent = `[${currentUser.id}]`;
+            document.getElementById('topbar-name').textContent = `${currentUser.rank} ${currentUser.name}`;
+            
+            const deptsString = currentUser.dept.join(', ');
+            document.getElementById('dash-user-info').textContent = `[${currentUser.id}] ${currentUser.rank} ${currentUser.name} (${deptsString})`;
+
+            const dbTab = document.getElementById('nav-db-board');
+            if (currentUser.dept.includes('DB')) {
+                dbTab.style.display = 'flex';
+                dbBoardInterval = setInterval(loadDBPosts, 2500);
+                loadDBPosts();
+            } else {
+                dbTab.style.display = 'none';
+            }
+
+            const swatTab = document.getElementById('nav-swat-board');
+            if (currentUser.dept.includes('SWAT')) {
+                swatTab.style.display = 'flex';
+                swatBoardInterval = setInterval(loadSWATPosts, 2500);
+                loadSWATPosts();
+            } else {
+                swatTab.style.display = 'none';
+            }
+
+            renderFormList();
+            const today = new Date();
+            document.getElementById('live-date').innerText = `DATA: ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('view-' + tabId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            if(el) el.classList.add('active');
+        }
+
+        // --- Logika obsługi Alertu Taktycznego SWAT ---
+        function toggleTacticalAlert(isRemote = false) {
+            // Uniknięcie błędu jeśli isRemote jest eventem kliknięcia z HTML
+            let remoteCall = (isRemote === true);
+            
+            tacticalAlertActive = !tacticalAlertActive;
+            const body = document.body;
+            const btn = document.getElementById('tactical-btn');
+            const statusBox = document.getElementById('swat-status-indicator');
+            const effText = document.getElementById('swat-stat-eff');
+            const panicAudio = document.getElementById('audio-panic');
+
+            if(tacticalAlertActive) {
+                body.classList.add('tactical-alert-active');
+                btn.innerText = "[ DEZAKTYWUJ ALARM TAKTYCZNY ]";
+                statusBox.innerText = "ACTIVE DEPLOYMENT - KOD 99 (ZAGROŻENIE)";
+                effText.innerText = "COMBAT READY";
+                effText.style.color = "var(--swat-red)";
+                
+                if(!remoteCall) {
+                    // Automatyczne dodanie wpisu do tablicy SWAT przez system
+                    const alertPost = {
+                        id: Date.now(),
+                        author: "SYSTEM OSTRZEGANIA [AUTO]",
+                        date: new Date().toLocaleString('pl-PL'),
+                        content: `>>> OGŁOSZONO ALARM TAKTYCZNY (ZAINICJOWANO PRZEZ: ${currentUser.name.toUpperCase()}) <<<\nJednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na głównym kanale. Wymagane natychmiastowe przejście na TAC-2.`,
+                        prio: "Wysoki"
+                    };
+                    let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
+                    posts.unshift(alertPost);
+                    localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
+                    
+                    // Powiadomienie innych kart przeglądarki
+                    localStorage.setItem('bcso_swat_alarm_state', 'ON_' + Date.now());
+                }
+
+                // Odtworzenie dźwięku panic.mp3
+                if (currentUser && currentUser.dept.includes('SWAT')) {
+                    panicAudio.currentTime = 0;
+                    panicAudio.play().catch(e => console.warn("Przeglądarka zablokowała autoodtwarzanie alarmu: ", e));
+                }
+
+                loadSWATPosts();
+
+            } else {
+                body.classList.remove('tactical-alert-active');
+                btn.innerText = "[ ZAINICJUJ ALARM TAKTYCZNY ]";
+                statusBox.innerText = "STANDBY - KOD 4 (GOTOWOŚĆ)";
+                effText.innerText = "100%";
+                effText.style.color = "var(--text-bright)";
+                
+                if(!remoteCall) {
+                    localStorage.setItem('bcso_swat_alarm_state', 'OFF_' + Date.now());
+                }
+
+                // Zatrzymanie dźwięku
+                panicAudio.pause();
+                panicAudio.currentTime = 0;
+            }
+        }
+
+        // --- Synchronizacja alarmu między innymi oknami/kartami ---
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'bcso_swat_alarm_state') {
+                // Jeśli użytkownik jest zalogowany i ma dostęp do SWAT
+                if (!currentUser || !currentUser.dept.includes('SWAT')) return;
+                
+                const isAlarmOn = e.newValue && e.newValue.startsWith('ON_');
+                if (isAlarmOn && !tacticalAlertActive) {
+                    toggleTacticalAlert(true); // Włącza alarm jako wywołanie zdalne
+                } else if (!isAlarmOn && tacticalAlertActive) {
+                    toggleTacticalAlert(true); // Wyłącza alarm jako wywołanie zdalne
+                }
+            }
+        });
+
+        /* --- LOGIKA GENEROWANIA DOKUMENTÓW --- */
+        function renderFormList() {
+            const container = document.getElementById('form-list-container');
+            container.innerHTML = '';
+            resetCreator();
+
+            formTemplates.forEach(template => {
+                let hasAccess = false;
+                if (template.category === "Wydział Patrolowy") hasAccess = true;
+                else if (template.category === "Biuro Detektywistyczne (DB)") hasAccess = currentUser.dept.includes("DB");
+                else if (template.category === "SWAT") hasAccess = currentUser.dept.includes("SWAT");
+                else if (template.category === "Dowództwo (High Command)") hasAccess = currentUser.isHC;
+
+                if (hasAccess) {
+                    const div = document.createElement('div');
+                    div.className = 'doc-item';
+                    div.innerHTML = `${template.title} <span class="category-tag">${template.category}</span>`;
+                    div.onclick = () => selectForm(template.id);
+                    container.appendChild(div);
+                }
+            });
+        }
+
+        function selectForm(templateId) {
+            selectedTemplate = formTemplates.find(t => t.id === templateId);
+            if (!selectedTemplate) return;
+
+            document.getElementById('form-inputs-section').style.display = 'block';
+            document.getElementById('active-form-title').innerText = `Wypełniasz: ${selectedTemplate.title}`;
+            document.getElementById('doc-signature').innerText = `[${currentUser.id}] ${currentUser.name.toUpperCase()}`;
+
+            const inputsContainer = document.getElementById('dynamic-inputs-container');
+            const previewContainer = document.getElementById('preview-fields-container');
+            
+            inputsContainer.innerHTML = '';
+            previewContainer.innerHTML = '';
+
+            const today = new Date();
+            const strDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
+
+            if (selectedTemplate.isCustomMatrix) {
+                document.querySelector('.doc-header').style.display = 'none';
+                document.querySelector('.doc-meta-top').style.display = 'none';
+                document.querySelector('.doc-title-main').style.display = 'none';
+                document.querySelector('.doc-footer').style.display = 'none';
+
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; font-size: 24px; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; color: #000000 !important; font-family: 'Times New Roman', serif !important;">INCIDENT REPORT</div>
+                    <div style="font-size: 10px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; color: #000000 !important;">SZARE STREFY TYLKO DO UŻYCIA PRZEZ DOWÓDCĘ ZMIANY/INTERNAL AFFAIRS</div>
+                    <table class="incident-grid-table">
+                        <tr class="grey-zone" style="height: 35px;">
+                            <td style="width: 45%;">DEPARTAMENT<br><span id="preview-dept" class="fill-space"></span></td>
+                            <td style="width: 20%;">REP NO.<br><span id="preview-rep_no" class="fill-space"></span></td>
+                            <td style="width: 35%;">INCIDENT/CASE NO.<br><span id="preview-case_no" class="fill-space"></span></td>
+                        </tr>
+                        <tr><td colspan="3" class="section-divider">Deputy Making Report</td></tr>
+                        <tr>
+                            <td colspan="2">IMIĘ:<br><span id="preview-first_name" class="fill-space"></span></td>
+                            <td>NAZWISKO:<br><span id="preview-last_name" class="fill-space"></span></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">STOPIEŃ:<br><span id="preview-rank" class="fill-space"></span></td>
+                            <td>FUNKCJA:<br><span id="preview-role" class="fill-space"></span></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">AGENCJA:<br><span id="preview-agency" class="fill-space"></span></td>
+                            <td>DYWIZJA:<br><span id="preview-division" class="fill-space"></span></td>
+                        </tr>
+                        <tr>
+                            <td style="width: 33.3%;">WIEK:<br><span id="preview-age" class="fill-space"></span></td>
+                            <td style="width: 33.3%;">NUMER ODZNAKI:<br><span id="preview-badge" class="fill-space"></span></td>
+                            <td style="width: 33.3%;">RASA:<br><span id="preview-race" class="fill-space"></span></td>
+                        </tr>
+                        <tr><td colspan="3" class="section-divider">Incident</td></tr>
+                        <tr><td colspan="3">NATURA INCYDENTU:<br><span id="preview-nature" class="fill-space"></span></td></tr>
+                        <tr><td colspan="2">MIEJSCE INCYDENTU:<br><span id="preview-location" class="fill-space"></span></td><td></td></tr>
+                        <tr>
+                            <td>DATA INCYDENTU:<br><span id="preview-date" class="fill-space"></span></td>
+                            <td>CZAS:<br><span id="preview-time" class="fill-space"></span></td>
+                            <td>WEZWANO SV:<br><span id="preview-sv_called" class="fill-space"></span></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">OBSZAR INCYDENTU:<br><span id="preview-area" class="fill-space"></span></td>
+                            <td>DYSTRYKT/OBSZAR:<br><span id="preview-district" class="fill-space"></span></td>
+                        </tr>
+                        <tr><td colspan="3" style="font-weight: bold; border-bottom: none; padding-bottom: 0;">OPIS INCYDENTU:</td></tr>
+                        <tr><td colspan="3" style="border-top: none; height: 280px; white-space: pre-wrap;" id="preview-description" class="fill-space"></td></tr>
+                        <tr>
+                            <td>ŚWIADKOWIE:<br><span id="preview-witnesses" class="fill-space"></span></td>
+                            <td>RANNI:<br><span id="preview-injured" class="fill-space"></span></td>
+                            <td>WEZWANO EMS:<br><span id="preview-ems_called" class="fill-space"></span></td>
+                        </tr>
+                        <tr>
+                            <td>OFIARY ŚMIERTELNE:<br><span id="preview-fatalities" class="fill-space"></span></td>
+                            <td></td>
+                            <td>NIE</td>
+                        </tr>
+                        <tr><td colspan="3" style="height: 50px;">Uwagi:<br><span id="preview-remarks" class="fill-space" style="white-space: pre-wrap;"></span></td></tr>
+                        <tr class="grey-zone" style="height: 35px;">
+                            <td>PODPIS:<br><span id="preview-sig_name" class="fill-space"></span></td>
+                            <td>NR ODZNAKI:<br><span id="preview-sig_badge" class="fill-space"></span></td>
+                            <td>DATA:<br><span id="preview-sig_date" class="fill-space"></span></td>
+                        </tr>
+                    </table>
+                `;
+            } else {
+                document.querySelector('.doc-header').style.display = 'block';
+                document.querySelector('.doc-meta-top').style.display = 'flex';
+                document.querySelector('.doc-title-main').style.display = 'block';
+                document.querySelector('.doc-footer').style.display = 'block';
+                document.getElementById('preview-doc-title').innerText = selectedTemplate.title;
+            }
+
+            selectedTemplate.fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group-doc';
+                
+                const label = document.createElement('label');
+                label.innerText = field.label;
+                group.appendChild(label);
+
+                let input = document.createElement(field.type === 'textarea' ? 'textarea' : 'input');
+                if(field.type !== 'textarea') input.type = 'text';
+                input.id = `input-${field.id}`;
+                
+                let defaultVal = field.default || '';
+                
+                // --- Autouzupełnianie pól (dodano nowe reguły dla realizmu) ---
+                if (selectedTemplate.id === "universal_incident") {
+                    if (field.id === "first_name") defaultVal = currentUser.name.split(' ')[0];
+                    if (field.id === "last_name") defaultVal = currentUser.name.split(' ')[1] || '';
+                    if (field.id === "rank") defaultVal = currentUser.rank;
+                    if (field.id === "badge" || field.id === "sig_badge") defaultVal = currentUser.id;
+                    if (field.id === "date" || field.id === "sig_date") defaultVal = strDate;
+                }
+                
+                if (field.id === "leave_name" || field.id === "swat_commander" || field.id === "issuer" || field.id === "detective" || field.id === "officer_name") {
+                    defaultVal = `${currentUser.rank} ${currentUser.name}`;
+                }
+
+                input.value = defaultVal;
+                input.oninput = () => updatePreview();
+                group.appendChild(input);
+                inputsContainer.appendChild(group);
+
+                if (!selectedTemplate.isCustomMatrix) {
+                    const previewField = document.createElement('div');
+                    previewField.className = 'content-field';
+                    
+                    const fieldLabel = document.createElement('div');
+                    fieldLabel.className = 'field-label';
+                    fieldLabel.innerText = field.label;
+                    
+                    const fieldValue = document.createElement('div');
+                    fieldValue.className = 'field-value';
+                    fieldValue.id = `preview-${field.id}`;
+                    fieldValue.innerText = defaultVal || '---';
+
+                    previewField.appendChild(fieldLabel);
+                    previewField.appendChild(fieldValue);
+                    previewContainer.appendChild(previewField);
+                }
+            });
+
+            updatePreview();
+        }
+
+        function updatePreview() {
+            if (!selectedTemplate) return;
+
+            selectedTemplate.fields.forEach(field => {
+                const inputEl = document.getElementById(`input-${field.id}`);
+                const previewEl = document.getElementById(`preview-${field.id}`);
+                
+                if (inputEl && previewEl) {
+                    if (inputEl.value.trim() !== '') {
+                        previewEl.innerText = inputEl.value;
+                        if(field.type === 'textarea') previewEl.style.whiteSpace = 'pre-wrap';
+                    } else {
+                        previewEl.innerText = '---';
+                    }
+                }
+            });
+
+            if (selectedTemplate.isCustomMatrix) {
+                const fName = document.getElementById('input-first_name')?.value || '';
+                const lName = document.getElementById('input-last_name')?.value || '';
+                const sigNameEl = document.getElementById('preview-sig_name');
+                if (sigNameEl) {
+                    sigNameEl.innerText = (fName || lName) ? `${currentUser.rank.substring(0,3)}. ${fName} ${lName}`.toUpperCase() : '---';
+                }
+            }
+        }
+
+        function clearForm() {
+            if (!selectedTemplate) return;
+            selectedTemplate.fields.forEach(field => {
+                const inputEl = document.getElementById(`input-${field.id}`);
+                if (inputEl) inputEl.value = '';
+            });
+            updatePreview();
+        }
+
+        function resetCreator() {
+            selectedTemplate = null;
+            document.getElementById('form-inputs-section').style.display = 'none';
+            document.querySelector('.doc-header').style.display = 'block';
+            document.querySelector('.doc-meta-top').style.display = 'flex';
+            document.querySelector('.doc-title-main').style.display = 'block';
+            document.querySelector('.doc-footer').style.display = 'block';
+            document.getElementById('preview-doc-title').innerText = "PROSZĘ WYBRAĆ FORMULARZ Z LISTY";
+            document.getElementById('preview-fields-container').innerHTML = `
+                <p style="color: #777777; text-align: center; font-style: italic; margin-top: 50px;">
+                    Wybierz rodzaj dokumentu po lewej stronie, a następnie wprowadź dane, aby wygenerować podgląd pisma.
+                </p>
+            `;
+        }
+
+        function downloadDocumentAsPNG() {
+            const element = document.getElementById('document-preview');
+            if (!element) return;
+
+            const wrapper = document.querySelector('.preview-panel');
+            const originalScrollTop = wrapper.scrollTop;
+            wrapper.scrollTop = 0;
+
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                logging: false,
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
+            }).then(canvas => {
+                wrapper.scrollTop = originalScrollTop;
+
+                const image = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
+                link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
+                link.href = image;
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }).catch(error => {
+                console.error("Błąd podczas generowania pliku PNG:", error);
+                alert("Wystąpił błąd podczas eksportu.");
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        // --- OBSŁUGA TABLICY DB ---
+        function addDBPost() {
+            const content = document.getElementById('db-post-content').value.trim();
+            const prio = document.getElementById('db-post-prio').value;
+            if(!content) return;
+
+            const post = {
+                id: Date.now(),
+                author: `[${currentUser.id}] ${currentUser.name}`,
+                date: new Date().toLocaleString('pl-PL'),
+                content: content,
+                prio: prio
+            };
+
+            let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
+            posts.unshift(post);
+            localStorage.setItem('bcso_db_board', JSON.stringify(posts));
+            document.getElementById('db-post-content').value = '';
+            loadDBPosts();
+        }
+
+        function loadDBPosts() {
+            const container = document.getElementById('db-posts-container');
+            let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
+            container.innerHTML = '';
+            
+            if(posts.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>';
+                return;
+            }
+
+            posts.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `board-item prio-${p.prio}`;
+                div.innerHTML = `
+                    <div class="board-meta">
+                        <span class="board-author">${p.author}</span>
+                        <span>${p.date} | Priorytet: ${p.prio}</span>
+                    </div>
+                    <div class="board-content">${escapeHTML(p.content)}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- OBSŁUGA TABLICY SWAT ---
+        function addSWATPost() {
+            const content = document.getElementById('swat-post-content').value.trim();
+            const prio = document.getElementById('swat-post-prio').value;
+            if(!content) return;
+
+            const post = {
+                id: Date.now(),
+                author: `[${currentUser.id}] ${currentUser.name}`,
+                date: new Date().toLocaleString('pl-PL'),
+                content: content,
+                prio: prio
+            };
+
+            let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
+            posts.unshift(post);
+            localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
+            document.getElementById('swat-post-content').value = '';
+            loadSWATPosts();
+        }
+
+        function loadSWATPosts() {
+            const container = document.getElementById('swat-posts-container');
+            let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
+            container.innerHTML = '';
+            
+            if(posts.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>';
+                return;
+            }
+
+            posts.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `board-item prio-${p.prio}`;
+                div.innerHTML = `
+                    <div class="board-meta">
+                        <span class="board-author">${p.author}</span>
+                        <span>${p.date} | Priorytet: ${p.prio}</span>
+                    </div>
+                    <div class="board-content">${escapeHTML(p.content)}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
