@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCSO Enterprise Terminal</title>
-    <!-- html2canvas CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSK74TifsitNdVD5gI" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         /* ========================================================
@@ -342,11 +341,9 @@
 </head>
 <body>
 
-    <!-- ================== AUDIO ELEMENTS ================== -->
     <audio id="audio-login" src="sounds/login.mp3" preload="auto"></audio>
     <audio id="audio-panic" src="sounds/panic.mp3" preload="auto"></audio>
 
-    <!-- ================== LOGIN SCREEN ================== -->
     <div id="login-screen">
         <div class="login-box">
             <div class="login-header">
@@ -368,7 +365,6 @@
         </div>
     </div>
 
-    <!-- ================== APP SCREEN ================== -->
     <div id="app-screen">
         <div id="sidebar">
             <div class="sidebar-brand">
@@ -394,7 +390,6 @@
                 </div>
             </div>
 
-            <!-- DASHBOARD -->
             <div id="view-dashboard" class="view-section active">
                 <h2 class="section-title">Terminal Mobilny BCSO</h2>
                 <p style="color: var(--text-dim); line-height: 1.6;">
@@ -403,7 +398,6 @@
                 </p>
             </div>
 
-            <!-- FORMS -->
             <div id="view-forms" class="view-section" style="padding: 0; overflow: hidden;">
                 <div class="workspace">
                     <div class="creator-panel">
@@ -449,7 +443,6 @@
                 </div>
             </div>
 
-            <!-- DB BOARD -->
             <div id="view-db-board" class="view-section">
                 <h2 class="section-title">Wewnętrzna Tablica DB</h2>
                 <div class="board-controls">
@@ -470,7 +463,6 @@
                 <div class="board-list" id="db-posts-container"></div>
             </div>
 
-            <!-- SWAT BOARD (NEW GRID & ROSTER) -->
             <div id="view-swat-board" class="view-section" style="padding: 30px;">
                 <div class="swat-header-flex">
                     <h2 class="section-title">Centrum Dowodzenia taktycznego S.W.A.T.</h2>
@@ -478,10 +470,8 @@
                 </div>
 
                 <div class="swat-grid">
-                    <!-- LEWA KOLUMNA: ROSTER & STATUS -->
                     <div class="swat-sidebar">
                         
-                        <!-- Tactical Status Module -->
                         <div class="tactical-module">
                             <h3>Status Jednostki Taktycznej</h3>
                             <div class="status-box" id="swat-status-indicator">STANDBY - KOD 4 (GOTOWOŚĆ)</div>
@@ -494,7 +484,6 @@
                             </div>
                         </div>
 
-                        <!-- SWAT Roster Module -->
                         <div class="tactical-module">
                             <h3>Struktura Operacyjna S.W.A.T.</h3>
                             
@@ -531,7 +520,6 @@
 
                     </div>
 
-                    <!-- PRAWA KOLUMNA: TABLICA LOGÓW -->
                     <div class="swat-main-area">
                         <div class="board-controls" style="margin-bottom: 0;">
                             <div class="form-group">
@@ -553,7 +541,6 @@
                 </div>
             </div>
 
-            <!-- LINKS -->
             <div id="view-links" class="view-section">
                 <h2 class="section-title">Zasoby i Procedury</h2>
                 <div class="links-grid">
@@ -574,31 +561,52 @@
         </div>
     </div>
 
-    <!-- ================== SCRIPT LOGIC ================== -->
-    <script>
-        // Zaktualizowana baza z wszystkimi członkami S.W.A.T.
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // =======================================================================================
+        // FIREBASE CONFIG - Aby tablica działała globalnie dla wszystkich (nie tylko u Ciebie),
+        // wklej tutaj swoje dane z darmowej bazy Firebase (Google).
+        // Jeśli tego nie uzupełnisz, system rozpozna to automatycznie i przełączy się
+        // na lokalny tryb "notatnika" w Twojej przeglądarce (fallback).
+        // =======================================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmtztj6TUgkxpDvVL1-AEQhoo8GSwHIsg",
+            authDomain: "bcso-terminal.firebaseapp.com",
+            databaseURL: "https://bcso-terminal-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bcso-terminal",
+            storageBucket: "bcso-terminal.firebasestorage.app",
+            messagingSenderId: "872432546393",
+            appId: "1:872432546393:web:bfafbc848bd3fd8354b748",
+            measurementId: "G-0ZJ3MKBLQP"
+        };
+
+        const isFirebaseActive = (firebaseConfig.apiKey !== "TWÓJ_API_KEY");
+        let db = null;
+        if (isFirebaseActive) {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+        }
+
+        // BAZA UŻYTKOWNIKÓW I FORMULARZY
         const users = [
             { id: 210, name: "Alex Lopez", rank: "Sergeant", dept: ["DB"], isHC: true, pass: "1" },
             { id: 256, name: "Yakiv Mondragon", rank: "Detective", dept: ["DB", "SWAT"], isHC: false, pass: "1" },
             { id: 257, name: "Liam Miller", rank: "Detective", dept: ["Patrol", "SWAT", "DB"], isHC: false, pass: "1" },
-            
             { id: 201, name: "Jack Wheelie", rank: "Undersheriff", dept: ["Patrol"], isHC: true, pass: "2" },
             { id: 202, name: "Denis Rush", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
             { id: 203, name: "Caitlyn Payne", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
             { id: 204, name: "Colby Hoffa", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
-            
             { id: 207, name: "Christopher Bathyscaphe", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
             { id: 211, name: "Michael Winter", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
             { id: 216, name: "Aiden Norris", rank: "Deputy", dept: ["Patrol"], isHC: false, pass: "3" },
-            
-            // Nowi pracownicy do struktury SWAT
             { id: 209, name: "Zack Russo", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
             { id: 220, name: "Jeffrey Fox", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
             { id: 250, name: "Patrick De Luca", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
             { id: 255, name: "David Woodbuurn", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" }
         ];
 
-        /* BAZA SZABLONÓW - ZMODYFIKOWANA WEDŁUG ZALECEŃ */
         const formTemplates = [
             // ================= PATROL =================
             {
@@ -652,8 +660,6 @@
                     { id: "feedback", label: "Uwagi dla dowództwa (opcjonalnie)", type: "textarea" }
                 ]
             },
-
-            // ================= DETEKTYWI =================
             {
                 id: "duty_report_db", title: "Raport służbowy", category: "Biuro Detektywistyczne (DB)",
                 fields: [
@@ -664,8 +670,6 @@
                     { id: "next_steps", label: "Planowane kolejne kroki", type: "textarea" }
                 ]
             },
-
-            // ================= SWAT =================
             {
                 id: "swat_action_report", title: "Raport z akcji", category: "SWAT",
                 fields: [
@@ -677,8 +681,6 @@
                     { id: "injuries", label: "Ranni operatorzy (Tak/Nie - wymień)", type: "text", default: "Nie" }
                 ]
             },
-
-            // ================= HIGH COMMAND =================
             {
                 id: "personal_order", title: "Rozkaz personalny", category: "Dowództwo (High Command)",
                 fields: [
@@ -752,7 +754,7 @@
             document.getElementById('current-time').textContent = now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL');
         }
 
-        async function attemptLogin() {
+        window.attemptLogin = async function() {
             const id = parseInt(document.getElementById('login-user').value);
             const pass = document.getElementById('login-pass').value;
             const err = document.getElementById('login-error');
@@ -777,7 +779,6 @@
             await sleep(300); log(`Weryfikacja kluczy w bazie danych...`, `var(--muted-orange)`);
             await sleep(400); log(`Dostęp przyznany. Ustanawianie bezpiecznego tunelu...`);
             
-            // Odtworzenie dźwięku logowania
             const loginAudio = document.getElementById('audio-login');
             loginAudio.currentTime = 0;
             loginAudio.play().catch(e => console.warn("Przeglądarka zablokowała dźwięk logowania: ", e));
@@ -791,7 +792,7 @@
             document.getElementById('app-screen').style.display = 'flex';
         }
 
-        function logout() {
+        window.logout = function() {
             currentUser = null;
             clearInterval(dbBoardInterval);
             clearInterval(swatBoardInterval);
@@ -800,24 +801,25 @@
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-console').innerHTML = '';
             
-            if(tacticalAlertActive) toggleTacticalAlert(false); // Wylącz alarm przy wylogowaniu
+            if(tacticalAlertActive) window.toggleTacticalAlert(false);
 
-            switchTab('dashboard', document.querySelector('.nav-item'));
+            window.switchTab('dashboard', document.querySelector('.nav-item'));
             resetCreator();
         }
 
         function setupUI() {
             document.getElementById('topbar-badge').textContent = `[${currentUser.id}]`;
             document.getElementById('topbar-name').textContent = `${currentUser.rank} ${currentUser.name}`;
-            
             const deptsString = currentUser.dept.join(', ');
             document.getElementById('dash-user-info').textContent = `[${currentUser.id}] ${currentUser.rank} ${currentUser.name} (${deptsString})`;
 
             const dbTab = document.getElementById('nav-db-board');
             if (currentUser.dept.includes('DB')) {
                 dbTab.style.display = 'flex';
-                dbBoardInterval = setInterval(loadDBPosts, 2500);
-                loadDBPosts();
+                if (!isFirebaseActive) {
+                    dbBoardInterval = setInterval(loadDBPostsLocal, 2500);
+                    loadDBPostsLocal();
+                }
             } else {
                 dbTab.style.display = 'none';
             }
@@ -825,8 +827,10 @@
             const swatTab = document.getElementById('nav-swat-board');
             if (currentUser.dept.includes('SWAT')) {
                 swatTab.style.display = 'flex';
-                swatBoardInterval = setInterval(loadSWATPosts, 2500);
-                loadSWATPosts();
+                if (!isFirebaseActive) {
+                    swatBoardInterval = setInterval(loadSWATPostsLocal, 2500);
+                    loadSWATPostsLocal();
+                }
             } else {
                 swatTab.style.display = 'none';
             }
@@ -836,18 +840,16 @@
             document.getElementById('live-date').innerText = `DATA: ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
         }
 
-        function switchTab(tabId, el) {
+        window.switchTab = function(tabId, el) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.getElementById('view-' + tabId).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             if(el) el.classList.add('active');
         }
 
-        // --- Logika obsługi Alertu Taktycznego SWAT ---
-        function toggleTacticalAlert(isRemote = false) {
-            // Uniknięcie błędu jeśli isRemote jest eventem kliknięcia z HTML
+        // --- Logika Alarmu Taktycznego SWAT ---
+        window.toggleTacticalAlert = function(isRemote = false) {
             let remoteCall = (isRemote === true);
-            
             tacticalAlertActive = !tacticalAlertActive;
             const body = document.body;
             const btn = document.getElementById('tactical-btn');
@@ -863,30 +865,31 @@
                 effText.style.color = "var(--swat-red)";
                 
                 if(!remoteCall) {
-                    // Automatyczne dodanie wpisu do tablicy SWAT przez system
                     const alertPost = {
                         id: Date.now(),
                         author: "SYSTEM OSTRZEGANIA [AUTO]",
                         date: new Date().toLocaleString('pl-PL'),
                         content: `>>> OGŁOSZONO ALARM TAKTYCZNY (ZAINICJOWANO PRZEZ: ${currentUser.name.toUpperCase()}) <<<\nJednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na głównym kanale. Wymagane natychmiastowe przejście na TAC-2.`,
-                        prio: "Wysoki"
+                        prio: "Wysoki",
+                        timestamp: Date.now()
                     };
-                    let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
-                    posts.unshift(alertPost);
-                    localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
-                    
-                    // Powiadomienie innych kart przeglądarki
-                    localStorage.setItem('bcso_swat_alarm_state', 'ON_' + Date.now());
+
+                    if (isFirebaseActive) {
+                        push(ref(db, 'swat_posts'), alertPost);
+                        set(ref(db, 'swat_alarm'), { active: true, timestamp: Date.now() });
+                    } else {
+                        let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
+                        posts.unshift(alertPost);
+                        localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
+                        localStorage.setItem('bcso_swat_alarm_state', 'ON_' + Date.now());
+                        loadSWATPostsLocal();
+                    }
                 }
 
-                // Odtworzenie dźwięku panic.mp3
                 if (currentUser && currentUser.dept.includes('SWAT')) {
                     panicAudio.currentTime = 0;
                     panicAudio.play().catch(e => console.warn("Przeglądarka zablokowała autoodtwarzanie alarmu: ", e));
                 }
-
-                loadSWATPosts();
-
             } else {
                 body.classList.remove('tactical-alert-active');
                 btn.innerText = "[ ZAINICJUJ ALARM TAKTYCZNY ]";
@@ -895,27 +898,24 @@
                 effText.style.color = "var(--text-bright)";
                 
                 if(!remoteCall) {
-                    localStorage.setItem('bcso_swat_alarm_state', 'OFF_' + Date.now());
+                    if (isFirebaseActive) {
+                        set(ref(db, 'swat_alarm'), { active: false, timestamp: Date.now() });
+                    } else {
+                        localStorage.setItem('bcso_swat_alarm_state', 'OFF_' + Date.now());
+                    }
                 }
-
-                // Zatrzymanie dźwięku
                 panicAudio.pause();
                 panicAudio.currentTime = 0;
             }
         }
 
-        // --- Synchronizacja alarmu między innymi oknami/kartami ---
+        // Podstawa w LocalStorage dla braku Firebase (Fallback)
         window.addEventListener('storage', (e) => {
-            if (e.key === 'bcso_swat_alarm_state') {
-                // Jeśli użytkownik jest zalogowany i ma dostęp do SWAT
+            if (!isFirebaseActive && e.key === 'bcso_swat_alarm_state') {
                 if (!currentUser || !currentUser.dept.includes('SWAT')) return;
-                
                 const isAlarmOn = e.newValue && e.newValue.startsWith('ON_');
-                if (isAlarmOn && !tacticalAlertActive) {
-                    toggleTacticalAlert(true); // Włącza alarm jako wywołanie zdalne
-                } else if (!isAlarmOn && tacticalAlertActive) {
-                    toggleTacticalAlert(true); // Wyłącza alarm jako wywołanie zdalne
-                }
+                if (isAlarmOn && !tacticalAlertActive) { window.toggleTacticalAlert(true); }
+                else if (!isAlarmOn && tacticalAlertActive) { window.toggleTacticalAlert(true); }
             }
         });
 
@@ -924,7 +924,6 @@
             const container = document.getElementById('form-list-container');
             container.innerHTML = '';
             resetCreator();
-
             formTemplates.forEach(template => {
                 let hasAccess = false;
                 if (template.category === "Wydział Patrolowy") hasAccess = true;
@@ -952,10 +951,8 @@
 
             const inputsContainer = document.getElementById('dynamic-inputs-container');
             const previewContainer = document.getElementById('preview-fields-container');
-            
             inputsContainer.innerHTML = '';
             previewContainer.innerHTML = '';
-
             const today = new Date();
             const strDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
 
@@ -1035,18 +1032,14 @@
             selectedTemplate.fields.forEach(field => {
                 const group = document.createElement('div');
                 group.className = 'form-group-doc';
-                
                 const label = document.createElement('label');
                 label.innerText = field.label;
                 group.appendChild(label);
-
                 let input = document.createElement(field.type === 'textarea' ? 'textarea' : 'input');
                 if(field.type !== 'textarea') input.type = 'text';
                 input.id = `input-${field.id}`;
                 
                 let defaultVal = field.default || '';
-                
-                // --- Autouzupełnianie pól (dodano nowe reguły dla realizmu) ---
                 if (selectedTemplate.id === "universal_incident") {
                     if (field.id === "first_name") defaultVal = currentUser.name.split(' ')[0];
                     if (field.id === "last_name") defaultVal = currentUser.name.split(' ')[1] || '';
@@ -1054,7 +1047,6 @@
                     if (field.id === "badge" || field.id === "sig_badge") defaultVal = currentUser.id;
                     if (field.id === "date" || field.id === "sig_date") defaultVal = strDate;
                 }
-                
                 if (field.id === "leave_name" || field.id === "swat_commander" || field.id === "issuer" || field.id === "detective" || field.id === "officer_name") {
                     defaultVal = `${currentUser.rank} ${currentUser.name}`;
                 }
@@ -1067,11 +1059,9 @@
                 if (!selectedTemplate.isCustomMatrix) {
                     const previewField = document.createElement('div');
                     previewField.className = 'content-field';
-                    
                     const fieldLabel = document.createElement('div');
                     fieldLabel.className = 'field-label';
                     fieldLabel.innerText = field.label;
-                    
                     const fieldValue = document.createElement('div');
                     fieldValue.className = 'field-value';
                     fieldValue.id = `preview-${field.id}`;
@@ -1082,24 +1072,19 @@
                     previewContainer.appendChild(previewField);
                 }
             });
-
             updatePreview();
         }
 
         function updatePreview() {
             if (!selectedTemplate) return;
-
             selectedTemplate.fields.forEach(field => {
                 const inputEl = document.getElementById(`input-${field.id}`);
                 const previewEl = document.getElementById(`preview-${field.id}`);
-                
                 if (inputEl && previewEl) {
                     if (inputEl.value.trim() !== '') {
                         previewEl.innerText = inputEl.value;
                         if(field.type === 'textarea') previewEl.style.whiteSpace = 'pre-wrap';
-                    } else {
-                        previewEl.innerText = '---';
-                    }
+                    } else { previewEl.innerText = '---'; }
                 }
             });
 
@@ -1107,13 +1092,11 @@
                 const fName = document.getElementById('input-first_name')?.value || '';
                 const lName = document.getElementById('input-last_name')?.value || '';
                 const sigNameEl = document.getElementById('preview-sig_name');
-                if (sigNameEl) {
-                    sigNameEl.innerText = (fName || lName) ? `${currentUser.rank.substring(0,3)}. ${fName} ${lName}`.toUpperCase() : '---';
-                }
+                if (sigNameEl) { sigNameEl.innerText = (fName || lName) ? `${currentUser.rank.substring(0,3)}. ${fName} ${lName}`.toUpperCase() : '---'; }
             }
         }
 
-        function clearForm() {
+        window.clearForm = function() {
             if (!selectedTemplate) return;
             selectedTemplate.fields.forEach(field => {
                 const inputEl = document.getElementById(`input-${field.id}`);
@@ -1130,42 +1113,45 @@
             document.querySelector('.doc-title-main').style.display = 'block';
             document.querySelector('.doc-footer').style.display = 'block';
             document.getElementById('preview-doc-title').innerText = "PROSZĘ WYBRAĆ FORMULARZ Z LISTY";
-            document.getElementById('preview-fields-container').innerHTML = `
-                <p style="color: #777777; text-align: center; font-style: italic; margin-top: 50px;">
-                    Wybierz rodzaj dokumentu po lewej stronie, a następnie wprowadź dane, aby wygenerować podgląd pisma.
-                </p>
-            `;
+            document.getElementById('preview-fields-container').innerHTML = `<p style="color: #777777; text-align: center; font-style: italic; margin-top: 50px;">Wybierz rodzaj dokumentu po lewej stronie, a następnie wprowadź dane, aby wygenerować podgląd pisma.</p>`;
         }
 
-        function downloadDocumentAsPNG() {
-            const element = document.getElementById('document-preview');
-            if (!element) return;
+        // NAPRAWIONE POBIERANIE HTML2CANVAS DO PNG!
+        window.downloadDocumentAsPNG = function() {
+            const originalElement = document.getElementById('document-preview');
+            if (!originalElement) return;
 
-            const wrapper = document.querySelector('.preview-panel');
-            const originalScrollTop = wrapper.scrollTop;
-            wrapper.scrollTop = 0;
+            // Klonujemy element, aby ominąć problemy ze skrollem / Vercel renderowaniem
+            const clone = originalElement.cloneNode(true);
+            document.body.appendChild(clone);
+            
+            // Wymuszamy fizyczne wymiary poza ekranem, aby canvas uchwycił całość
+            Object.assign(clone.style, {
+                position: 'absolute',
+                top: '-9999px',
+                left: '-9999px',
+                width: '210mm',
+                height: 'max-content',
+                minHeight: '297mm',
+                transform: 'none',
+                overflow: 'visible'
+            });
 
-            html2canvas(element, {
+            html2canvas(clone, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: false,
                 backgroundColor: "#ffffff",
-                logging: false,
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight
+                logging: false
             }).then(canvas => {
-                wrapper.scrollTop = originalScrollTop;
-
+                document.body.removeChild(clone); // Sprzątamy
                 const image = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
                 const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
                 link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
-                link.href = image;
-                
-                document.body.appendChild(link);
                 link.click();
-                document.body.removeChild(link);
             }).catch(error => {
+                document.body.removeChild(clone);
                 console.error("Błąd podczas generowania pliku PNG:", error);
                 alert("Wystąpił błąd podczas eksportu.");
             });
@@ -1175,8 +1161,8 @@
             return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
         }
 
-        // --- OBSŁUGA TABLICY DB ---
-        function addDBPost() {
+        // --- OBSŁUGA TABLIC (DB & SWAT) MULTIPLAYER ---
+        window.addDBPost = function() {
             const content = document.getElementById('db-post-content').value.trim();
             const prio = document.getElementById('db-post-prio').value;
             if(!content) return;
@@ -1186,42 +1172,22 @@
                 author: `[${currentUser.id}] ${currentUser.name}`,
                 date: new Date().toLocaleString('pl-PL'),
                 content: content,
-                prio: prio
+                prio: prio,
+                timestamp: Date.now()
             };
 
-            let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
-            posts.unshift(post);
-            localStorage.setItem('bcso_db_board', JSON.stringify(posts));
-            document.getElementById('db-post-content').value = '';
-            loadDBPosts();
-        }
-
-        function loadDBPosts() {
-            const container = document.getElementById('db-posts-container');
-            let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
-            container.innerHTML = '';
-            
-            if(posts.length === 0) {
-                container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>';
-                return;
+            if (isFirebaseActive) {
+                push(ref(db, 'db_posts'), post);
+            } else {
+                let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
+                posts.unshift(post);
+                localStorage.setItem('bcso_db_board', JSON.stringify(posts));
+                loadDBPostsLocal();
             }
-
-            posts.forEach(p => {
-                const div = document.createElement('div');
-                div.className = `board-item prio-${p.prio}`;
-                div.innerHTML = `
-                    <div class="board-meta">
-                        <span class="board-author">${p.author}</span>
-                        <span>${p.date} | Priorytet: ${p.prio}</span>
-                    </div>
-                    <div class="board-content">${escapeHTML(p.content)}</div>
-                `;
-                container.appendChild(div);
-            });
+            document.getElementById('db-post-content').value = '';
         }
 
-        // --- OBSŁUGA TABLICY SWAT ---
-        function addSWATPost() {
+        window.addSWATPost = function() {
             const content = document.getElementById('swat-post-content').value.trim();
             const prio = document.getElementById('swat-post-prio').value;
             if(!content) return;
@@ -1231,38 +1197,82 @@
                 author: `[${currentUser.id}] ${currentUser.name}`,
                 date: new Date().toLocaleString('pl-PL'),
                 content: content,
-                prio: prio
+                prio: prio,
+                timestamp: Date.now()
             };
 
-            let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
-            posts.unshift(post);
-            localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
+            if (isFirebaseActive) {
+                push(ref(db, 'swat_posts'), post);
+            } else {
+                let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
+                posts.unshift(post);
+                localStorage.setItem('bcso_swat_board', JSON.stringify(posts));
+                loadSWATPostsLocal();
+            }
             document.getElementById('swat-post-content').value = '';
-            loadSWATPosts();
         }
 
-        function loadSWATPosts() {
+        // FIREBASE LISTENERS (REALTIME GLOBAL)
+        if (isFirebaseActive) {
+            onValue(ref(db, 'db_posts'), (snapshot) => {
+                if(!currentUser || !currentUser.dept.includes('DB')) return;
+                const container = document.getElementById('db-posts-container');
+                container.innerHTML = '';
+                const data = snapshot.val();
+                if(!data) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+                
+                const posts = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+                posts.forEach(p => renderPostToBoard(container, p));
+            });
+
+            onValue(ref(db, 'swat_posts'), (snapshot) => {
+                if(!currentUser || !currentUser.dept.includes('SWAT')) return;
+                const container = document.getElementById('swat-posts-container');
+                container.innerHTML = '';
+                const data = snapshot.val();
+                if(!data) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+                
+                const posts = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+                posts.forEach(p => renderPostToBoard(container, p));
+            });
+
+            onValue(ref(db, 'swat_alarm'), (snapshot) => {
+                if(!currentUser || !currentUser.dept.includes('SWAT')) return;
+                const data = snapshot.val();
+                if(!data) return;
+                if(data.active && !tacticalAlertActive) window.toggleTacticalAlert(true);
+                else if (!data.active && tacticalAlertActive) window.toggleTacticalAlert(true);
+            });
+        }
+
+        // FALLBACK LOCAL LOADERS
+        function loadDBPostsLocal() {
+            const container = document.getElementById('db-posts-container');
+            let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
+            container.innerHTML = '';
+            if(posts.length === 0) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+            posts.forEach(p => renderPostToBoard(container, p));
+        }
+
+        function loadSWATPostsLocal() {
             const container = document.getElementById('swat-posts-container');
             let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
             container.innerHTML = '';
-            
-            if(posts.length === 0) {
-                container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>';
-                return;
-            }
+            if(posts.length === 0) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+            posts.forEach(p => renderPostToBoard(container, p));
+        }
 
-            posts.forEach(p => {
-                const div = document.createElement('div');
-                div.className = `board-item prio-${p.prio}`;
-                div.innerHTML = `
-                    <div class="board-meta">
-                        <span class="board-author">${p.author}</span>
-                        <span>${p.date} | Priorytet: ${p.prio}</span>
-                    </div>
-                    <div class="board-content">${escapeHTML(p.content)}</div>
-                `;
-                container.appendChild(div);
-            });
+        function renderPostToBoard(container, p) {
+            const div = document.createElement('div');
+            div.className = `board-item prio-${p.prio}`;
+            div.innerHTML = `
+                <div class="board-meta">
+                    <span class="board-author">${p.author}</span>
+                    <span>${p.date} | Priorytet: ${p.prio}</span>
+                </div>
+                <div class="board-content">${escapeHTML(p.content)}</div>
+            `;
+            container.appendChild(div);
         }
     </script>
 </body>
