@@ -92,6 +92,11 @@
         }
         .btn:hover { background-color: var(--faded-gold); color: var(--bg-deep); }
 
+        .btn-refresh {
+            background-color: transparent; color: var(--text-dim); border: 1px solid var(--border-color);
+        }
+        .btn-refresh:hover { background-color: var(--border-color); color: var(--text-bright); }
+
         #login-console {
             position: absolute; bottom: -100px; left: 0; width: 100%;
             height: 80px; overflow: hidden; font-family: 'Courier New', Courier, monospace;
@@ -458,7 +463,10 @@
                             <option value="Wysoki">Wysoki (Krytyczne)</option>
                         </select>
                     </div>
-                    <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addDBPost()">Dodaj Wpis</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addDBPost()">Dodaj Wpis</button>
+                        <button class="btn btn-refresh" style="width: auto; padding: 10px 30px;" onclick="forceRefreshDB()">Odśwież tablicę</button>
+                    </div>
                 </div>
                 <div class="board-list" id="db-posts-container"></div>
             </div>
@@ -534,7 +542,10 @@
                                     <option value="Wysoki">KRYTYCZNE (Shots Fired/Officer Down)</option>
                                 </select>
                             </div>
-                            <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addSWATPost()">Nadaj Komunikat</button>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn" style="width: auto; padding: 10px 30px;" onclick="addSWATPost()">Nadaj Komunikat</button>
+                                <button class="btn btn-refresh" style="width: auto; padding: 10px 30px;" onclick="forceRefreshSWAT()">Odśwież tablicę</button>
+                            </div>
                         </div>
                         <div class="board-list" id="swat-posts-container"></div>
                     </div>
@@ -563,7 +574,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, push, set, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         // =======================================================================================
         // FIREBASE CONFIG
@@ -605,7 +616,6 @@
         ];
 
         const formTemplates = [
-            // ================= PATROL =================
             {
                 id: "universal_incident", title: "Uniwersalny incydent", category: "Wydział Patrolowy",
                 isCustomMatrix: true,
@@ -737,7 +747,6 @@
 
         // ==========================================
         // INIT MODULE
-        // W type="module" DOM ładuje się przed odpaleniem, dlatego funkcja poniżej zawsze chwyci listę graczy.
         // ==========================================
         function initApp() {
             const select = document.getElementById('login-user');
@@ -752,7 +761,7 @@
             updateTime();
             setInterval(updateTime, 1000);
         }
-        initApp(); // Uruchomienie natychmiastowe
+        initApp();
 
         function updateTime() {
             const now = new Date();
@@ -826,6 +835,8 @@
                 if (!isFirebaseActive) {
                     dbBoardInterval = setInterval(loadDBPostsLocal, 2500);
                     loadDBPostsLocal();
+                } else {
+                    window.forceRefreshDB();
                 }
             } else {
                 dbTab.style.display = 'none';
@@ -837,6 +848,8 @@
                 if (!isFirebaseActive) {
                     swatBoardInterval = setInterval(loadSWATPostsLocal, 2500);
                     loadSWATPostsLocal();
+                } else {
+                    window.forceRefreshSWAT();
                 }
             } else {
                 swatTab.style.display = 'none';
@@ -847,6 +860,39 @@
             document.getElementById('live-date').innerText = `DATA: ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
         }
 
+        // =======================================================================================
+        // FUNKCJE WYMUSZAJĄCE ODŚWIEŻENIE
+        // =======================================================================================
+        window.forceRefreshDB = function() {
+            if (isFirebaseActive && db) {
+                get(child(ref(db), 'db_posts')).then((snapshot) => {
+                    const container = document.getElementById('db-posts-container');
+                    container.innerHTML = '';
+                    const data = snapshot.val();
+                    if(!data) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+                    const posts = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+                    posts.forEach(p => renderPostToBoard(container, p));
+                });
+            } else {
+                loadDBPostsLocal();
+            }
+        }
+
+        window.forceRefreshSWAT = function() {
+            if (isFirebaseActive && db) {
+                get(child(ref(db), 'swat_posts')).then((snapshot) => {
+                    const container = document.getElementById('swat-posts-container');
+                    container.innerHTML = '';
+                    const data = snapshot.val();
+                    if(!data) { container.innerHTML = '<div style="color: var(--text-dim); text-align: center;">Brak wpisów operacyjnych.</div>'; return; }
+                    const posts = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+                    posts.forEach(p => renderPostToBoard(container, p));
+                });
+            } else {
+                loadSWATPostsLocal();
+            }
+        }
+
         window.switchTab = function(tabId, el) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             const targetView = document.getElementById('view-' + tabId);
@@ -854,9 +900,11 @@
             
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             if(el) el.classList.add('active');
+
+            if (tabId === 'db-board') window.forceRefreshDB();
+            if (tabId === 'swat-board') window.forceRefreshSWAT();
         }
 
-        // --- Logika Alarmu Taktycznego SWAT ---
         window.toggleTacticalAlert = function(isRemote = false) {
             let remoteCall = (isRemote === true);
             tacticalAlertActive = !tacticalAlertActive;
@@ -885,7 +933,7 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                     };
 
                     if (isFirebaseActive) {
-                        push(ref(db, 'swat_posts'), alertPost);
+                        push(ref(db, 'swat_posts'), alertPost).then(() => { window.forceRefreshSWAT(); });
                         set(ref(db, 'swat_alarm'), { active: true, timestamp: Date.now() });
                     } else {
                         let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
@@ -921,7 +969,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             }
         }
 
-        // Podstawa w LocalStorage dla braku Firebase (Fallback)
         window.addEventListener('storage', (e) => {
             if (!isFirebaseActive && e.key === 'bcso_swat_alarm_state') {
                 if (!currentUser || !currentUser.dept.includes('SWAT')) return;
@@ -1129,56 +1176,63 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
         }
 
         /* --------------------------------------------------------
-           NAPRAWIONA FUNKCJA GENEROWANIA DOKUMENTU (BEZ KLONOWANIA)
+           NOWA FUNKCJA GENEROWANIA DOKUMENTU PNG (KLONOWANIE I BLOB)
            -------------------------------------------------------- */
         window.downloadDocumentAsPNG = async function() {
-            const element = document.getElementById('document-preview');
-            const previewPanel = document.querySelector('.preview-panel');
-            if (!element) return;
+            const originalElement = document.getElementById('document-preview');
+            if (!originalElement) return;
 
             const btn = document.querySelector('.btn-primary');
             const originalBtnText = btn.innerText;
             btn.innerText = "GENEROWANIE DOKUMENTU...";
             btn.disabled = true;
 
-            // Zabezpieczenie wizualne - usuwamy na chwilę cień, by obraz wyglądał jak czysta kartka
-            const originalBoxShadow = element.style.boxShadow;
-            const originalOverflow = previewPanel.style.overflow;
-            
-            element.style.boxShadow = 'none';
-            previewPanel.style.overflow = 'visible'; // Zabezpiecza przed ucięciem dolnej części dokumentu
-
             try {
-                // Generowanie ze zwiększoną jakością (skala 3 daje bardzo ostre teksty)
-                const canvas = await html2canvas(element, {
-                    scale: 3, 
+                // KROK 1: Klonujemy dokument, aby pominąć problem ze scrollem
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'absolute';
+                wrapper.style.top = '0';
+                wrapper.style.left = '-9999px'; // Renderowanie poza widocznym ekranem
+                wrapper.style.width = '210mm'; // Sztywno przypięta szerokość A4
+                
+                const clone = originalElement.cloneNode(true);
+                wrapper.appendChild(clone);
+                document.body.appendChild(wrapper);
+
+                // KROK 2: Generowanie canvasu ze sklonowanego elementu
+                const canvas = await html2canvas(clone, {
+                    scale: 2, 
                     useCORS: true,
                     backgroundColor: "#ffffff",
                     logging: false,
-                    windowWidth: element.scrollWidth,
-                    windowHeight: element.scrollHeight
+                    scrollY: 0,
+                    scrollX: 0
                 });
                 
-                const image = canvas.toDataURL("image/png", 1.0);
-                const link = document.createElement('a');
-                
-                // Formatowanie nazwy pliku
-                const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
-                link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
-                
-                link.href = image; 
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // KROK 3: Usuwamy klon
+                document.body.removeChild(wrapper);
+
+                // KROK 4: Zapisujemy jako plik bezpośrednio na komputer za pomocą interfejsu Blob
+                canvas.toBlob(function(blob) {
+                    if (!blob) throw new Error("Generowanie pliku Blob nie powiodło się. Plik jest zbyt duży.");
+                    
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    
+                    const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
+                    link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
+                    
+                    link.href = url; 
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url); // Czyszczenie pamięci
+                }, 'image/png', 1.0);
                 
             } catch (error) {
                 console.error("Błąd generowania PNG:", error);
-                alert("Wystąpił błąd podczas zapisywania pliku. Sprawdź konsolę (F12).");
+                alert("Błąd podczas zapisywania pliku: " + error.message);
             } finally {
-                // Przywracamy dawny wygląd interfejsu
-                element.style.boxShadow = originalBoxShadow;
-                previewPanel.style.overflow = originalOverflow;
-                
                 btn.innerText = originalBtnText;
                 btn.disabled = false;
             }
@@ -1188,7 +1242,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
         }
 
-        // --- OBSŁUGA TABLIC (DB & SWAT) MULTIPLAYER ---
         window.addDBPost = function() {
             const content = document.getElementById('db-post-content').value.trim();
             const prio = document.getElementById('db-post-prio').value;
@@ -1204,7 +1257,7 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             };
 
             if (isFirebaseActive) {
-                push(ref(db, 'db_posts'), post);
+                push(ref(db, 'db_posts'), post).then(() => { window.forceRefreshDB(); });
             } else {
                 let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
                 posts.unshift(post);
@@ -1229,7 +1282,7 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             };
 
             if (isFirebaseActive) {
-                push(ref(db, 'swat_posts'), post);
+                push(ref(db, 'swat_posts'), post).then(() => { window.forceRefreshSWAT(); });
             } else {
                 let posts = JSON.parse(localStorage.getItem('bcso_swat_board') || '[]');
                 posts.unshift(post);
@@ -1239,7 +1292,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             document.getElementById('swat-post-content').value = '';
         }
 
-        // FIREBASE LISTENERS (REALTIME GLOBAL)
         if (isFirebaseActive) {
             onValue(ref(db, 'db_posts'), (snapshot) => {
                 if(!currentUser || !currentUser.dept.includes('DB')) return;
@@ -1272,7 +1324,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             });
         }
 
-        // FALLBACK LOCAL LOADERS
         function loadDBPostsLocal() {
             const container = document.getElementById('db-posts-container');
             let posts = JSON.parse(localStorage.getItem('bcso_db_board') || '[]');
