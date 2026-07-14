@@ -1178,9 +1178,12 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
         /* --------------------------------------------------------
            NOWA FUNKCJA GENEROWANIA DOKUMENTU PNG (KLONOWANIE I BLOB)
            -------------------------------------------------------- */
+/* --------------------------------------------------------
+           NAPRAWIONA FUNKCJA GENEROWANIA DOKUMENTU PNG
+           -------------------------------------------------------- */
         window.downloadDocumentAsPNG = async function() {
-            const originalElement = document.getElementById('document-preview');
-            if (!originalElement) return;
+            const element = document.getElementById('document-preview');
+            if (!element) return;
 
             const btn = document.querySelector('.btn-primary');
             const originalBtnText = btn.innerText;
@@ -1188,46 +1191,30 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             btn.disabled = true;
 
             try {
-                // KROK 1: Klonujemy dokument, aby pominąć problem ze scrollem
-                const wrapper = document.createElement('div');
-                wrapper.style.position = 'absolute';
-                wrapper.style.top = '0';
-                wrapper.style.left = '-9999px'; // Renderowanie poza widocznym ekranem
-                wrapper.style.width = '210mm'; // Sztywno przypięta szerokość A4
-                
-                const clone = originalElement.cloneNode(true);
-                wrapper.appendChild(clone);
-                document.body.appendChild(wrapper);
+                // Tymczasowo zmieniamy overflow, żeby html2canvas złapał cały dokument bez scrollbarów
+                const originalOverflow = element.style.overflow;
+                element.style.overflow = 'visible';
 
-                // KROK 2: Generowanie canvasu ze sklonowanego elementu
-                const canvas = await html2canvas(clone, {
+                // Generowanie canvasu bezpośrednio z oryginalnego elementu
+                const canvas = await html2canvas(element, {
                     scale: 2, 
                     useCORS: true,
                     backgroundColor: "#ffffff",
-                    logging: false,
-                    scrollY: 0,
-                    scrollX: 0
+                    logging: false
                 });
                 
-                // KROK 3: Usuwamy klon
-                document.body.removeChild(wrapper);
+                // Przywracamy poprzedni stan elementu
+                element.style.overflow = originalOverflow;
 
-                // KROK 4: Zapisujemy jako plik bezpośrednio na komputer za pomocą interfejsu Blob
-                canvas.toBlob(function(blob) {
-                    if (!blob) throw new Error("Generowanie pliku Blob nie powiodło się. Plik jest zbyt duży.");
-                    
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    
-                    const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
-                    link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
-                    
-                    link.href = url; 
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url); // Czyszczenie pamięci
-                }, 'image/png', 1.0);
+                // Konwersja do Base64 i wymuszenie pobrania
+                const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
+                const link = document.createElement('a');
+                link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
+                link.href = canvas.toDataURL("image/png");
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
                 
             } catch (error) {
                 console.error("Błąd generowania PNG:", error);
