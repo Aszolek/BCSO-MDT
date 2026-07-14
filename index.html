@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCSO Enterprise Terminal</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnyJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Naprawiony link do biblioteki html2canvas (bez blokującego atrybutu integrity) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
         /* ========================================================
            GLOBAL VARIABLES & ENTERPRISE DARK THEME (NIETYKALNE)
@@ -1176,9 +1178,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
         }
 
         /* --------------------------------------------------------
-           NOWA FUNKCJA GENEROWANIA DOKUMENTU PNG (KLONOWANIE I BLOB)
-           -------------------------------------------------------- */
-/* --------------------------------------------------------
            NAPRAWIONA FUNKCJA GENEROWANIA DOKUMENTU PNG
            -------------------------------------------------------- */
         window.downloadDocumentAsPNG = async function() {
@@ -1191,22 +1190,20 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             btn.disabled = true;
 
             try {
-                // Tymczasowo zmieniamy overflow, żeby html2canvas złapał cały dokument bez scrollbarów
+                // Tymczasowo zmieniamy overflow, żeby pobrało cały dokument
                 const originalOverflow = element.style.overflow;
                 element.style.overflow = 'visible';
 
-                // Generowanie canvasu bezpośrednio z oryginalnego elementu
-                const canvas = await html2canvas(element, {
+                // Wymuszenie wywołania biblioteki z obiektu window
+                const canvas = await window.html2canvas(element, {
                     scale: 2, 
                     useCORS: true,
                     backgroundColor: "#ffffff",
                     logging: false
                 });
                 
-                // Przywracamy poprzedni stan elementu
                 element.style.overflow = originalOverflow;
 
-                // Konwersja do Base64 i wymuszenie pobrania
                 const docType = selectedTemplate ? selectedTemplate.title : 'Dokument';
                 const link = document.createElement('a');
                 link.download = `BCSO_${docType.replace(/\s+/g, '_')}_${Date.now()}.png`;
