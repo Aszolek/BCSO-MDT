@@ -8,6 +8,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
+        /* Import czcionki odręcznej do podpisów elektronicznych */
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
+
         /* ========================================================
            GLOBAL VARIABLES & ENTERPRISE DARK THEME (NIETYKALNE)
            ======================================================== */
@@ -225,7 +228,11 @@
         .legal-clause { font-size: 11px !important; font-style: italic !important; text-align: justify; color: #555555 !important; border-top: 1px solid #dddddd; padding-top: 15px; margin-bottom: 40px; line-height: 1.4; }
         .signature-area { display: flex; justify-content: flex-end; }
         .signature-block { text-align: center; width: 250px; }
-        .signature-line { border-bottom: 1px dashed #111111; height: 40px; margin-bottom: 5px; }
+        
+        /* Stylizacja strefy interaktywnego rysowania podpisu */
+        .sig-canvas-container { border-bottom: 1px dashed #111111; height: 55px; margin-bottom: 5px; position: relative; }
+        .sig-canvas { width: 100%; height: 100%; display: block; background: transparent; cursor: crosshair; }
+
         .signature-title { font-size: 11px !important; font-weight: bold !important; color: #222222 !important; }
 
         .incident-grid-table { width: 100%; border: 2px solid #111111; border-collapse: collapse; margin-top: 10px; color: #000000 !important; }
@@ -383,7 +390,7 @@
                 <div class="nav-item" onclick="switchTab('forms', this)">Baza Dokumentów</div>
                 <div class="nav-item" id="nav-db-board" onclick="switchTab('db-board', this)" style="display: none;">Sprawy wewnętrzne (DB)</div>
                 <div class="nav-item" id="nav-swat-board" onclick="switchTab('swat-board', this)" style="display: none;">Centrum Dowodzenia SWAT</div>
-                <div class="nav-item" onclick="switchTab('links', this)">Przydatne Linki</div>
+                <div class="nav-item" onclick="switchTab('links', this)">Przydatne Linki / Szkolenia</div>
             </div>
         </div>
 
@@ -415,6 +422,17 @@
                         <div id="form-inputs-section" style="display: none;">
                             <div class="section-title-doc" id="active-form-title">Wypełnij dokument</div>
                             <div class="dynamic-form" id="dynamic-inputs-container"></div>
+                            
+                            <!-- PANEL STEROWANIA PODPISEM -->
+                            <div class="section-title-doc" style="margin-top: 15px;">Autoryzacja / Podpis</div>
+                            <div style="background-color: var(--bg-input); padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; gap: 8px;">
+                                <p style="font-size: 11px; color: var(--text-dim); line-height: 1.4;">Możesz podpisać dokument odręcznie myszką po prawej stronie lub wygenerować automatyczny podpis cyfrowy.</p>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-doc btn-secondary" style="padding: 6px; font-size: 12px;" onclick="generateAutoSignature()">Autopodpis</button>
+                                    <button class="btn-doc btn-secondary" style="padding: 6px; font-size: 12px; color: var(--swat-red); border-color: rgba(217,4,41,0.4);" onclick="clearSignature()">Wyczyść</button>
+                                </div>
+                            </div>
+
                             <div class="actions-area">
                                 <button class="btn-doc btn-secondary" onclick="clearForm()">Wyczyść</button>
                                 <button class="btn-doc btn-primary" onclick="downloadDocumentAsPNG()">Pobierz PNG</button>
@@ -440,7 +458,9 @@
                                 </div>
                                 <div class="signature-area">
                                     <div class="signature-block">
-                                        <div class="signature-line"></div>
+                                        <div class="sig-canvas-container">
+                                            <canvas id="sig-canvas-standard" width="250" height="55" class="sig-canvas"></canvas>
+                                        </div>
                                         <div class="signature-title" id="doc-signature">PODPIS ELEKTRONICZNY SPORZĄDZAJĄCYM</div>
                                     </div>
                                 </div>
@@ -569,6 +589,44 @@
                         <h3>Materiały BLS</h3>
                         <p>Basic Life Support - procedury ratownictwa medycznego w terenie.</p>
                     </a>
+                    
+                    <!-- LINKI SZKOLENIOWE -->
+                    <a href="https://docs.google.com/document/d/1DGmNx_s0QG6Y128haxCHXLqZ-R79tdTy20MyHO7c6bQ/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: SV</h3>
+                        <p>Materiały szkoleniowe i dokumentacja SV.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1b5blJ3PGBbxkVZix3CY4r-UxjCMTTfrk7f0d2xdiVSs/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: NEGO</h3>
+                        <p>Materiały szkoleniowe i dokumentacja Negocjatorów.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1AmSfav8s82QiohCyfGbNI9BaocTNiaV5x5SZ2U_XAIE/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: PWC</h3>
+                        <p>Materiały szkoleniowe i dokumentacja PWC.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1kYvROz6Gpjz2FNrixB2adyLhGupxgmCRUFKcPWqAKF0/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: ASU</h3>
+                        <p>Materiały szkoleniowe Air Support Unit.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1JOWAQtybtYyEL2uszs5APjE8-sU9Kz5s30a1rOuq1O4/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: Marine</h3>
+                        <p>Materiały szkoleniowe jednostek nawodnych.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1S3MmXtBF_aYG1ZGGQ7La1N7YjWJOjXqQnq_bhqsxkh0/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: TED</h3>
+                        <p>Materiały szkoleniowe Traffic Enforcement Division.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1I492vi2Psf15Nvii_oOd-hgdrPlBVXs6xAycrbhsTE0/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: K9</h3>
+                        <p>Materiały szkoleniowe jednostki K9.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1DtXy1qsydDs_wu0r-G9DDNFpR5J85-u09wT-aoJnGKA/edit?usp=sharing" target="_blank" class="link-card">
+                        <h3>Szkolenie: MARRY</h3>
+                        <p>Materiały szkoleniowe MARRY.</p>
+                    </a>
+                    <a href="https://docs.google.com/document/d/1SoUfugeWtn-6eJRGfWqOd_w6XoVJbKPRxlW8XsFAlmg/edit?tab=t.0#heading=h.mbjsiz6n6jlo" target="_blank" class="link-card">
+                        <h3>Szkolenie: HAW</h3>
+                        <p>Materiały szkoleniowe High Speed Alert / HAW.</p>
+                    </a>
                 </div>
             </div>
         </div>
@@ -601,20 +659,21 @@
 
         // BAZA UŻYTKOWNIKÓW I FORMULARZY
         const users = [
-            { id: 210, name: "Alex Lopez", rank: "Sergeant", dept: ["Patrol"], isHC: true, pass: "1" },
-            { id: 256, name: "Yakiv Mondragon", rank: "Detective", dept: ["DB"], isHC: false, pass: "1" },
-            { id: 257, name: "Liam Miller", rank: "Detective", dept: ["Patrol", "SWAT", "DB"], isHC: false, pass: "1" },
-            { id: 201, name: "Jack Wheelie", rank: "Undersheriff", dept: ["Patrol"], isHC: true, pass: "2" },
-            { id: 202, name: "Denis Rush", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
-            { id: 203, name: "Caitlyn Payne", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
-            { id: 204, name: "Colby Hoffa", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "2" },
-            { id: 207, name: "Christopher Bathyscaphe", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
-            { id: 211, name: "Michael Winter", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
-            { id: 216, name: "Aiden Norris", rank: "Deputy", dept: ["Patrol"], isHC: false, pass: "3" },
-            { id: 209, name: "Zack Russo", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
-            { id: 220, name: "Jeffrey Fox", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
-            { id: 250, name: "Patrick De Luca", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" },
-            { id: 255, name: "David Woodbuurn", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "3" }
+            { id: 210, name: "Alex Lopez", rank: "Sergeant", dept: ["Patrol"], isHC: false, pass: "210" },
+            { id: 256, name: "Yakiv Mondragon", rank: "Detective", dept: ["Patrol", "DB"], isHC: false, pass: "256" },
+            { id: 257, name: "Liam Miller", rank: "Detective", dept: ["Patrol", "SWAT", "DB"], isHC: false, pass: "257" },
+            { id: 201, name: "Jack Wheelie", rank: "Sheriff", dept: ["Patrol"], isHC: true, pass: "201" },
+            { id: 202, name: "Denis Rush", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "202" },
+            { id: 203, name: "Caitlyn Payne", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "203" },
+            { id: 204, name: "Colby Hoffa", rank: "Sergeant/Lieutenant", dept: ["Patrol", "SWAT"], isHC: true, pass: "204" },
+            { id: 205, name: "Brak Danych (HC)", rank: "Dowództwo", dept: ["Patrol"], isHC: true, pass: "205" },
+            { id: 207, name: "Christopher Bathyscaphe", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "207" },
+            { id: 211, name: "Michael Winter", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "211" },
+            { id: 216, name: "Aiden Norris", rank: "Deputy", dept: ["Patrol"], isHC: false, pass: "216" },
+            { id: 209, name: "Zack Russo", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "209" },
+            { id: 220, name: "Jeffrey Fox", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "220" },
+            { id: 250, name: "Patrick De Luca", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "250" },
+            { id: 255, name: "David Woodbuurn", rank: "Deputy", dept: ["Patrol", "SWAT"], isHC: false, pass: "255" }
         ];
 
         const formTemplates = [
@@ -737,6 +796,22 @@
                     { id: "reason", label: "Powód zwolnienia", type: "textarea" },
                     { id: "disciplinary", label: "Zwolnienie dyscyplinarne (Tak/Nie)", type: "text", default: "Nie" },
                     { id: "equipment", label: "Status zwrotu mienia służbowego", type: "text", default: "Oczekujące na zdanie" }
+                ]
+            },
+            {
+                id: "training_req", title: "Wniosek o podejście do szkolenia", category: "Szkolenia",
+                fields: [
+                    { id: "officer_name", label: "Imię i nazwisko", type: "text" },
+                    { id: "training_type", label: "Wybór szkolenia (np. SV, PWC, K9)", type: "text" },
+                    { id: "reason", label: "Uzasadnienie chęci udziału", type: "textarea" }
+                ]
+            },
+            {
+                id: "exam_req", title: "Wniosek o podejście do egzaminu", category: "Szkolenia",
+                fields: [
+                    { id: "officer_name", label: "Imię i nazwisko", type: "text" },
+                    { id: "exam_type", label: "Rodzaj egzaminu (Teoria / Praktyka)", type: "text" },
+                    { id: "training", label: "Kategoria (np. ASU, Marine)", type: "text" }
                 ]
             }
         ];
@@ -990,6 +1065,7 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                 if (template.category === "Wydział Patrolowy") hasAccess = true;
                 else if (template.category === "Biuro Detektywistyczne (DB)") hasAccess = currentUser.dept.includes("DB");
                 else if (template.category === "SWAT") hasAccess = currentUser.dept.includes("SWAT");
+                else if (template.category === "Szkolenia") hasAccess = currentUser.dept.includes("Patrol"); 
                 else if (template.category === "Dowództwo (High Command)") hasAccess = currentUser.isHC;
 
                 if (hasAccess) {
@@ -1002,13 +1078,96 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             });
         }
 
+        // DYNAMICZNE LOGOWANIE SYSTEMU PODPISÓW
+        function setupSignaturePad(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.strokeStyle = "#122a52"; // Realistyczny, ciemnoniebieski tusz długopisu
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            let isDrawing = false;
+
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: (clientX - rect.left) * (canvas.width / rect.width),
+                    y: (clientY - rect.top) * (canvas.height / rect.height)
+                };
+            }
+
+            function startDraw(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(coords.x, coords.coords ? coords.y : coords.y);
+                if(e.touches) e.preventDefault();
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                const coords = getCoordinates(e);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.stroke();
+                if(e.touches) e.preventDefault();
+            }
+
+            function stopDraw() {
+                isDrawing = false;
+            }
+
+            // Obsługa myszy
+            canvas.onmousedown = startDraw;
+            canvas.onmousemove = draw;
+            window.addEventListener('mouseup', stopDraw);
+
+            // Obsługa dotyku (Urządzenia mobilne / Tablety)
+            canvas.ontouchstart = startDraw;
+            canvas.ontouchmove = draw;
+            window.addEventListener('touchend', stopDraw);
+        }
+
+        window.clearSignature = function() {
+            ['sig-canvas-standard', 'sig-canvas-matrix'].forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            });
+        }
+
+        window.generateAutoSignature = function() {
+            window.clearSignature();
+            if (!currentUser) return;
+
+            const signatureText = currentUser.name;
+
+            ['sig-canvas-standard', 'sig-canvas-matrix'].forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.font = "italic 32px 'Caveat', cursive";
+                    ctx.fillStyle = "#122a52";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(signatureText, canvas.width / 2, canvas.height / 2);
+                }
+            });
+        }
+
         function selectForm(templateId) {
             selectedTemplate = formTemplates.find(t => t.id === templateId);
             if (!selectedTemplate) return;
 
             document.getElementById('form-inputs-section').style.display = 'block';
             document.getElementById('active-form-title').innerText = `Wypełniasz: ${selectedTemplate.title}`;
-            document.getElementById('doc-signature').innerText = `[${currentUser.id}] ${currentUser.name.toUpperCase()}`;
+            document.getElementById('doc-signature').innerText = `PODPIS ELEKTRONICZNY SPORZĄDZAJĄCYM`;
 
             const inputsContainer = document.getElementById('dynamic-inputs-container');
             const previewContainer = document.getElementById('preview-fields-container');
@@ -1075,8 +1234,12 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                             <td>NIE</td>
                         </tr>
                         <tr><td colspan="3" style="height: 50px;">Uwagi:<br><span id="preview-remarks" class="fill-space" style="white-space: pre-wrap;"></span></td></tr>
-                        <tr class="grey-zone" style="height: 35px;">
-                            <td>PODPIS:<br><span id="preview-sig_name" class="fill-space"></span></td>
+                        <tr class="grey-zone" style="height: 55px;">
+                            <td style="vertical-align: top;">PODPIS:<br>
+                                <div class="sig-canvas-container" style="border:none; height:35px; margin:0;">
+                                    <canvas id="sig-canvas-matrix" width="250" height="35" class="sig-canvas"></canvas>
+                                </div>
+                            </td>
                             <td>NR ODZNAKI:<br><span id="preview-sig_badge" class="fill-space"></span></td>
                             <td>DATA:<br><span id="preview-sig_date" class="fill-space"></span></td>
                         </tr>
@@ -1133,6 +1296,14 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                     previewContainer.appendChild(previewField);
                 }
             });
+            
+            // Inicjalizacja płócien rysowniczych oraz automatycznego podpisu po renderowaniu DOM
+            setTimeout(() => {
+                setupSignaturePad('sig-canvas-standard');
+                setupSignaturePad('sig-canvas-matrix');
+                window.generateAutoSignature();
+            }, 50);
+
             updatePreview();
         }
 
@@ -1148,13 +1319,6 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                     } else { previewEl.innerText = '---'; }
                 }
             });
-
-            if (selectedTemplate.isCustomMatrix) {
-                const fName = document.getElementById('input-first_name')?.value || '';
-                const lName = document.getElementById('input-last_name')?.value || '';
-                const sigNameEl = document.getElementById('preview-sig_name');
-                if (sigNameEl) { sigNameEl.innerText = (fName || lName) ? `${currentUser.rank.substring(0,3)}. ${fName} ${lName}`.toUpperCase() : '---'; }
-            }
         }
 
         window.clearForm = function() {
@@ -1164,6 +1328,7 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
                 if (inputEl) inputEl.value = '';
             });
             updatePreview();
+            window.clearSignature();
         }
 
         function resetCreator() {
@@ -1190,11 +1355,9 @@ Jednostki taktyczne na pozycjach bojowych. Restrykcja łączności na kod 33 na 
             btn.disabled = true;
 
             try {
-                // Tymczasowo zmieniamy overflow, żeby pobrało cały dokument
                 const originalOverflow = element.style.overflow;
                 element.style.overflow = 'visible';
 
-                // Wymuszenie wywołania biblioteki z obiektu window
                 const canvas = await window.html2canvas(element, {
                     scale: 2, 
                     useCORS: true,
